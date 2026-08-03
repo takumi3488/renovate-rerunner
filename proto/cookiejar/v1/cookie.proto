@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package cookiejar.v1;
+
+service CookieService {
+  rpc GetCookies(GetCookiesRequest) returns (GetCookiesResponse);
+}
+
+message GetCookiesRequest {
+  string host = 1;
+}
+
+message GetCookiesResponse {
+  string cookies = 1;
+}

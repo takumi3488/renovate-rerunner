@@ -1,0 +1,55 @@
+/**
+ * Mend 側の Renovate の有効状態。
+ *
+ * Mend は `onboarding` / `onboarded` / `activated` / `disabled` などの文字列を返すが、
+ * 値の集合は公開されておらず将来増える可能性がある。判別できなかった値は握りつぶさず
+ * `unknown` として raw を保持し、突合側で「対象外」として安全に扱えるようにする。
+ */
+export type MendRenovateStatus =
+	| { readonly kind: "enabled" }
+	| { readonly kind: "disabled" }
+	| { readonly kind: "unknown"; readonly raw: string };
+
+/**
+ * Mend 側のリポジトリ。SCA / SAST ではなく Renovate の状態のみを見る。
+ */
+export interface MendRepo {
+	/** Mend が認識している名前（org を含まない repo 名）。 */
+	readonly name: string;
+	readonly renovateStatus: MendRenovateStatus;
+}
+
+/**
+ * scan トリガーの結果。
+ *
+ * 個別リポジトリの失敗は例外ではなくこの戻り値で表現する。セッション全体が壊れた場合のみ
+ * {@link MendAuthError} を throw する、という 2 段構えが終了コード設計の土台になっている。
+ */
+export type MendTriggerResult =
+	| { readonly ok: true }
+	| { readonly ok: false; readonly reason: string };
+
+/**
+ * Mend のセッションを確立できない、または確立済みのセッションが失効した。
+ * これが投げられた時点で以降の org を処理しても全滅が確定しているため、呼び出し側は即座に中断する。
+ */
+export class MendAuthError extends Error {
+	override readonly name = "MendAuthError";
+}
+
+/**
+ * Mend UI の構造が想定と変わっており操作を続行できない。
+ * リトライしても直らないので fail fast させる。
+ */
+export class MendUiError extends Error {
+	override readonly name = "MendUiError";
+}
+
+export interface MendClient extends AsyncDisposable {
+	/** 指定 org の全リポジトリと、その Renovate 状態を返す。 */
+	listRepos(org: string): Promise<readonly MendRepo[]>;
+	/** 「Run Renovate scan」に相当する操作を実行する。scan の完了までは待たない。 */
+	triggerScan(org: string, mendRepoName: string): Promise<MendTriggerResult>;
+}
+
+export type MendClientFactory = () => Promise<MendClient>;
