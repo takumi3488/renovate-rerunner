@@ -7,7 +7,7 @@
  * 標準の Cookie パーサをそのまま流用できない（属性がどの Cookie に属するかを自前で追う必要がある）。
  */
 
-import type { Cookie } from "playwright";
+import type { Cookie } from "../mend/types";
 
 /** Writer（HTTP）に送る 1 Cookie 分のペイロード。フィールド名は Writer 側の JSON に合わせて小文字。 */
 export interface WriterCookie {

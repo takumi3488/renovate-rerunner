@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Cookie } from "playwright";
+import type { Cookie } from "../mend/types";
 import { createLogger } from "../logger";
 import { CookiejarError, createCookiejarClient } from "./client";
 import type { CookiejarConfig } from "./config";

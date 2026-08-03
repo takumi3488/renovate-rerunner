@@ -28,6 +28,10 @@ function createFetchMock(
 	): Promise<Response> => {
 		const url = typeof input === "string" ? input : input.toString();
 		calls.push({ url, init });
+		// アカウント種別の判定リクエストは常に Organization を返す。
+		if (isAccountTypeLookup(url)) {
+			return makeResponse({ type: "Organization" });
+		}
 		return responder(url, calls.length - 1);
 	};
 	// Bun の fetch は呼び出しシグネチャに加えて静的メソッド preconnect を持ち、
@@ -48,6 +52,16 @@ function makeResponse(body: unknown, init: MockResponseInit = {}): Response {
 		status: init.status ?? 200,
 		headers: init.headers,
 	});
+}
+
+/**
+ * `/users/{name}` へのタイプ確認リクエストを Organization として応答する。
+ * listOrgRepos が最初にアカウント種別を判定するため、実際のレスポンスを返す前に
+ * このリクエストが挟まる。テストは /orgs/ か /users/ のどちらでも通るよう
+ * responder 側で URL を見て分岐する。
+ */
+function isAccountTypeLookup(url: string): boolean {
+	return /https:\/\/api\.github\.com\/users\/[^/]+$/.test(url);
 }
 
 /** テストを高速化するための no-op 待機。 */
@@ -240,9 +254,10 @@ describe("createGithubClient / listOrgRepos", () => {
 		const repos = await client.listOrgRepos("org");
 
 		expect(repos.map((repo) => repo.name)).toEqual(["repo-a", "repo-b"]);
-		expect(calls).toHaveLength(2);
+		// /users/ 1 回 + /repos 2 回 = 3 回。
+		expect(calls).toHaveLength(3);
 		// 2 ページ目は Link ヘッダの URL をそのまま使い、クエリを組み立て直さないこと。
-		expect(calls[1]?.url).toBe(nextUrl);
+		expect(calls[2]?.url).toBe(nextUrl);
 	});
 
 	test("maxPages を超えたらエラーになる", async () => {
@@ -277,8 +292,14 @@ describe("createGithubClient / listOrgRepos", () => {
 	});
 
 	test("500 が 2 回続いた後 200 で成功する", async () => {
-		const { fetchImpl, calls } = createFetchMock((_url, callIndex) => {
-			if (callIndex < 2) {
+		let repoCallCount = 0;
+		const { fetchImpl, calls } = createFetchMock((url) => {
+			// /users/ への呼び出しは resolveAccountType のもの。
+			if (url.includes("/users/") && url.includes("/repos") === false) {
+				return makeResponse({ type: "Organization" });
+			}
+			repoCallCount++;
+			if (repoCallCount <= 2) {
 				return makeResponse({}, { status: 500 });
 			}
 			return makeResponse([{ name: "repo-a", full_name: "org/repo-a" }]);
@@ -292,12 +313,19 @@ describe("createGithubClient / listOrgRepos", () => {
 		const repos = await client.listOrgRepos("org");
 
 		expect(repos).toHaveLength(1);
-		expect(calls).toHaveLength(3);
+		// /users/ 1 回 + /repos 3 回 = 4 回。
+		expect(calls).toHaveLength(4);
 	});
 
 	test("ネットワークエラーもリトライする", async () => {
-		const { fetchImpl, calls } = createFetchMock((_url, callIndex) => {
-			if (callIndex === 0) {
+		let repoCallCount = 0;
+		const { fetchImpl, calls } = createFetchMock((url) => {
+			// /users/ への呼び出しは resolveAccountType のもの。
+			if (url.includes("/users/") && url.includes("/repos") === false) {
+				return makeResponse({ type: "Organization" });
+			}
+			repoCallCount++;
+			if (repoCallCount === 1) {
 				throw new Error("network down");
 			}
 			return makeResponse([{ name: "repo-a", full_name: "org/repo-a" }]);
@@ -311,12 +339,19 @@ describe("createGithubClient / listOrgRepos", () => {
 		const repos = await client.listOrgRepos("org");
 
 		expect(repos).toHaveLength(1);
-		expect(calls).toHaveLength(2);
+		// /users/ 1 回 + /repos 2 回（初回失敗 + リトライ成功）= 3 回。
+		expect(calls).toHaveLength(3);
 	});
 
 	test("Retry-After ヘッダを尊重して待機する", async () => {
-		const { fetchImpl } = createFetchMock((_url, callIndex) => {
-			if (callIndex === 0) {
+		let repoCallCount = 0;
+		const { fetchImpl } = createFetchMock((url) => {
+			// /users/ への呼び出しは resolveAccountType のもの。
+			if (url.includes("/users/") && url.includes("/repos") === false) {
+				return makeResponse({ type: "Organization" });
+			}
+			repoCallCount++;
+			if (repoCallCount === 1) {
 				return makeResponse(
 					{},
 					{ status: 429, headers: { "retry-after": "2" } },
@@ -363,7 +398,7 @@ describe("createGithubClient / listOrgRepos", () => {
 		});
 
 		await expect(client.listOrgRepos("org")).rejects.toThrow(GithubApiError);
-		expect(calls).toHaveLength(1);
+		expect(calls).toHaveLength(2);
 	});
 
 	test("401 のエラーメッセージにトークンの値を含めない", async () => {
@@ -397,7 +432,7 @@ describe("createGithubClient / listOrgRepos", () => {
 		});
 
 		await expect(client.listOrgRepos("org")).rejects.toThrow(GithubApiError);
-		expect(calls).toHaveLength(1);
+		expect(calls).toHaveLength(2);
 	});
 
 	test("リトライ上限に達したら最後のエラーを throw する", async () => {
@@ -413,6 +448,6 @@ describe("createGithubClient / listOrgRepos", () => {
 
 		await expect(client.listOrgRepos("org")).rejects.toThrow(GithubApiError);
 		// 初回 + リトライ 2 回 = 3 回。
-		expect(calls).toHaveLength(3);
+		expect(calls).toHaveLength(4);
 	});
 });

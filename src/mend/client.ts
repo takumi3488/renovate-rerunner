@@ -2,20 +2,17 @@
  * developer.mend.io の MendClient 実装。
  *
  * Mend はリポジトリ一覧の取得も scan のトリガーも公開 API を提供していない
- * （公開 API は GitHub Secrets 管理専用）ため、認証済みブラウザから UI を操作する。
+ * （公開 API は GitHub Secrets 管理専用）ため、UI が叩いている内部 API を
+ * `x-app-id: 1` ヘッダと Cookie で直接叩く。
  *
- * ■ UI 依存を局所化する方針
- * 列の位置やボタンのラベルはヘッダー行とアクセシビリティロールから動的に特定し、
- * ハッシュ化されうる CSS クラス名には一切依存しない。それでも Mend の UI 変更で
- * 壊れることはあるので、壊れたときは黙って続行せず MendUiError で fail fast し、
- * `bun run observe` での再調査を促す。
+ * 観測結果（2026-08-03）:
+ * - 一覧: `GET /api/orgs/github/{org}/repos?page=0&size=50&renovateStatuses=disabled`
+ * - scan: `POST /api/repos/github/{org}/{repo}/renovate/job/add` (body: `{"selectedBranches":[]}`)
+ * - 必須ヘッダ: `x-app-id: 1`、`Cookie: mend_session=...`
  */
 
-import type { Locator, Page } from "playwright";
 import type { CookiejarClient } from "../cookiejar/client";
 import type { Logger } from "../logger";
-import type { MendSession } from "./auth";
-import { openMendSession } from "./auth";
 import type { MendConfig } from "./config";
 import { loadMendConfig } from "./config";
 import type {
@@ -24,10 +21,16 @@ import type {
 	MendRepo,
 	MendTriggerResult,
 } from "./types";
-import { MendUiError } from "./types";
+import { MendAuthError, MendUiError } from "./types";
+
+/** 内部 API が要求するヘッダ。これが無いと 401 になる。 */
+const APP_ID_HEADER = "1";
+
+/** ページネーションのサイズ。UI の既定と同じ。 */
+const PAGE_SIZE = 50;
 
 /**
- * Renovate が「動いている」ことを示すステータス文字列。
+ * UI に表示されている文字列を Renovate の状態に変換する。
  *
  * Mend のステータス値は公開されていないが、コミュニティで確認されているのは
  * onboarding / onboarded / activated / disabled の 4 つ。
@@ -42,7 +45,6 @@ const ENABLED_LABELS = new Set([
 ]);
 const DISABLED_LABELS = new Set(["disabled", "inactive", "not activated"]);
 
-/** UI に表示されている文字列を Renovate の状態に変換する。 */
 export function parseRenovateStatus(raw: string): MendRenovateStatus {
 	const normalized = raw.trim().toLowerCase();
 	if (DISABLED_LABELS.has(normalized)) return { kind: "disabled" };
@@ -51,39 +53,18 @@ export function parseRenovateStatus(raw: string): MendRenovateStatus {
 	return { kind: "unknown", raw: raw.trim() };
 }
 
-/**
- * ヘッダー行の中から Renovate 列の位置を探す。
- *
- * Mend のリポジトリ一覧には SCA / SAST / Renovate それぞれの有効無効列があるので、
- * 列位置を決め打ちすると別プロダクトの状態を読んでしまう。必ずヘッダー名で特定する。
- */
-export function findRenovateColumnIndex(headers: readonly string[]): number {
-	return headers.findIndex((header) => /renovate/i.test(header));
-}
-
-/** org ごとのリポジトリ一覧ページ URL。観測結果に合わせて調整する箇所。 */
-function repoListUrl(config: MendConfig, org: string): string {
-	const template = config.repoListPathTemplate;
-	return `${config.baseUrl}${template.replace("{org}", encodeURIComponent(org))}`;
-}
-
-async function readTableHeaders(page: Page): Promise<string[]> {
-	const headerCells = page.getByRole("columnheader");
-	const count = await headerCells.count();
-	if (count === 0) return [];
-	return (await headerCells.allTextContents()).map((text) => text.trim());
-}
-
-/** データ行（ヘッダー行を除く）を取得する。 */
-async function readDataRows(page: Page): Promise<Locator[]> {
-	const rows = await page.getByRole("row").all();
-	const dataRows: Locator[] = [];
-	for (const row of rows) {
-		// columnheader しか持たない行はヘッダーなので除外する。
-		if ((await row.getByRole("cell").count()) === 0) continue;
-		dataRows.push(row);
-	}
-	return dataRows;
+interface MendRepoResponse {
+	readonly content?: readonly {
+		readonly id: string;
+		readonly fullName: string;
+		readonly name: string;
+		readonly renovateStatus?: string;
+		readonly enabled?: boolean;
+		readonly renovateEnabled?: boolean;
+	}[];
+	readonly totalElements?: number;
+	readonly totalPages?: number;
+	readonly number?: number;
 }
 
 export interface CreateMendClientOptions {
@@ -92,72 +73,80 @@ export interface CreateMendClientOptions {
 	readonly config?: MendConfig;
 }
 
-/** MendClient に、セッションの Cookie を書き戻す機能を足したもの。index.ts が正常終了時に呼ぶ。 */
-export interface MendClientWithSession extends MendClient {
-	persistCookies(): Promise<boolean>;
-}
-
 export async function createMendClient(
 	options: CreateMendClientOptions,
-): Promise<MendClientWithSession> {
+): Promise<MendClient> {
 	const config = options.config ?? loadMendConfig();
 	const logger = options.logger;
-	const session: MendSession = await openMendSession({
-		config,
-		cookiejar: options.cookiejar,
-		logger,
-	});
 
-	/** 一覧ページを開き、Renovate 列の位置を確定させる。 */
-	async function openRepoList(
-		org: string,
-	): Promise<{ page: Page; renovateIndex: number }> {
-		const page = await session.page();
-		const url = repoListUrl(config, org);
-		logger.debug("Mend のリポジトリ一覧を開く", { url });
-		await page.goto(url, { waitUntil: "domcontentloaded" });
+	/** Cookie ヘッダを組み立てる。mend.io ドメインの Cookie のみ。 */
+	function buildCookieHeader(
+		cookies: readonly { name: string; value: string; domain: string }[],
+	): string {
+		return cookies
+			.filter((c) => c.domain.includes("mend.io"))
+			.map((c) => `${c.name}=${c.value}`)
+			.join("; ");
+	}
 
-		// テーブルが描画されるまで待つ。SPA なので goto 直後は空であることが多い。
-		await page
-			.getByRole("row")
-			.first()
-			.waitFor({ state: "visible", timeout: config.actionTimeoutMs })
-			.catch(() => {
-				throw new MendUiError(
-					`Mend のリポジトリ一覧テーブルが見つかりません（${url}）。URL が変わった可能性があります。MEND_REPO_LIST_PATH で調整するか、bun run observe で再調査してください。`,
-				);
-			});
-
-		const headers = await readTableHeaders(page);
-		const renovateIndex = findRenovateColumnIndex(headers);
-		if (renovateIndex < 0) {
-			throw new MendUiError(
-				`リポジトリ一覧に Renovate 列が見つかりません（検出した列: ${headers.join(" | ") || "なし"}）。bun run observe で UI を再調査してください。`,
+	/** 認証済みの fetch。失効していたら MendAuthError を投げる。 */
+	async function mendFetch<T>(path: string, init?: RequestInit): Promise<T> {
+		const cookies = await options.cookiejar.fetchCookies();
+		const cookieHeader = buildCookieHeader(cookies);
+		if (!cookieHeader) {
+			throw new MendAuthError(
+				"cookiejar に Mend の Cookie がありません。ブラウザで developer.mend.io にログインしてください（拡張が自動で保存します）。",
 			);
 		}
-		return { page, renovateIndex };
+
+		const url = `${config.baseUrl}${path}`;
+		const response = await fetch(url, {
+			...init,
+			headers: {
+				...init?.headers,
+				Cookie: cookieHeader,
+				"x-app-id": APP_ID_HEADER,
+				Accept: "application/json",
+			},
+		});
+
+		if (response.status === 401 || response.status === 403) {
+			throw new MendAuthError(
+				`Mend のセッションが失効しています（${response.status}）。ブラウザで developer.mend.io にログインしてください（拡張が自動で保存します）。`,
+			);
+		}
+
+		if (!response.ok) {
+			throw new MendUiError(
+				`Mend API が ${response.status} を返しました: ${path}`,
+			);
+		}
+
+		return (await response.json()) as T;
 	}
 
 	return {
 		async listRepos(org: string): Promise<readonly MendRepo[]> {
-			const { page, renovateIndex } = await openRepoList(org);
-			const rows = await readDataRows(page);
-
 			const repos: MendRepo[] = [];
-			for (const row of rows) {
-				const cells = await row.getByRole("cell").allTextContents();
-				const name = cells[0]?.trim();
-				const statusText = cells[renovateIndex]?.trim();
-				if (!name || statusText === undefined) continue;
+			let page = 0;
+			let totalPages = 1;
 
-				repos.push({ name, renovateStatus: parseRenovateStatus(statusText) });
-			}
-
-			if (repos.length === 0) {
-				throw new MendUiError(
-					`${org} のリポジトリ一覧から 1 件も読み取れませんでした。テーブル構造が変わった可能性があります。`,
+			while (page < totalPages) {
+				const data = await mendFetch<MendRepoResponse>(
+					`/api/orgs/github/${encodeURIComponent(org)}/repos?page=${page}&size=${PAGE_SIZE}&renovateStatuses=disabled`,
 				);
+
+				for (const item of data.content ?? []) {
+					repos.push({
+						name: item.name,
+						renovateStatus: parseRenovateStatus(item.renovateStatus ?? ""),
+					});
+				}
+
+				totalPages = data.totalPages ?? 1;
+				page += 1;
 			}
+
 			logger.debug("Mend からリポジトリを読み取った", {
 				org,
 				count: repos.length,
@@ -169,77 +158,30 @@ export async function createMendClient(
 			org: string,
 			mendRepoName: string,
 		): Promise<MendTriggerResult> {
-			const { page } = await openRepoList(org);
-			const row = page
-				.getByRole("row")
-				.filter({ hasText: mendRepoName })
-				.first();
-
-			if ((await row.count()) === 0) {
-				return {
-					ok: false,
-					reason: `一覧に ${mendRepoName} の行が見つかりませんでした`,
-				};
-			}
-
-			const scanButton = row
-				.getByRole("button", { name: /run renovate scan/i })
-				.first();
-			if ((await scanButton.count()) === 0) {
-				// ボタンが行に直接無い場合はアクションメニューの中にあることが多い。
-				const menuButton = row
-					.getByRole("button", { name: /action|more|menu|︙|⋮/i })
-					.first();
-				if ((await menuButton.count()) === 0) {
-					return {
-						ok: false,
-						reason: `${mendRepoName} の行に Run Renovate scan の導線が見つかりませんでした`,
-					};
-				}
-				await menuButton.click({ timeout: config.actionTimeoutMs });
-			}
-
-			const target = page
-				.getByRole("menuitem", { name: /run renovate scan/i })
-				.first();
-			const clickable = (await target.count()) > 0 ? target : scanButton;
-			if ((await clickable.count()) === 0) {
-				return {
-					ok: false,
-					reason: `${mendRepoName} の Run Renovate scan を特定できませんでした`,
-				};
-			}
-
-			// scan は非同期実行なので、トリガーが受理された時点で完了とみなす。
-			// 完了まで待つと 1 リポジトリあたり数分かかり実用にならない。
 			try {
-				await clickable.click({ timeout: config.actionTimeoutMs });
+				await mendFetch(
+					`/api/repos/github/${encodeURIComponent(org)}/${encodeURIComponent(mendRepoName)}/renovate/job/add`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ selectedBranches: [] }),
+					},
+				);
+				logger.debug("scan をトリガーした", { org, repo: mendRepoName });
+				return { ok: true };
 			} catch (error) {
+				if (error instanceof MendAuthError || error instanceof MendUiError) {
+					throw error;
+				}
 				return {
 					ok: false,
-					reason: `クリックに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+					reason: `scan のトリガーに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
 				};
 			}
-
-			// 確認ダイアログが出る場合に備える。無ければ何もしない。
-			const confirm = page
-				.getByRole("dialog")
-				.getByRole("button", { name: /confirm|run|ok|yes/i })
-				.first();
-			if (await confirm.isVisible({ timeout: 2_000 }).catch(() => false)) {
-				await confirm.click({ timeout: config.actionTimeoutMs });
-			}
-
-			logger.debug("scan をトリガーした", { org, repo: mendRepoName });
-			return { ok: true };
-		},
-
-		async persistCookies(): Promise<boolean> {
-			return session.persistCookies();
 		},
 
 		async [Symbol.asyncDispose](): Promise<void> {
-			await session[Symbol.asyncDispose]();
+			// 内部 API 方式ではリソースは持たない
 		},
 	};
 }

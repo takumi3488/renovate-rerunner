@@ -15,7 +15,7 @@ Mend は理由が明示されないまま Renovate を disabled にすること�
                                                      ↓
   GitHub REST API ──────────→ ┌────────────────────────┐
   （非 archived な repo 一覧）  │    renovate-rerunner   │ ──→ developer.mend.io
-                               └───────────┬────────────┘      （Playwright で UI 操作）
+                               └───────────┬────────────┘      （内部 API を直接呼ぶ）
                                            │ Cookie が失効していたら
                                            ↓
                                     Discord Webhook
@@ -24,7 +24,7 @@ Mend は理由が明示されないまま Renovate を disabled にすること�
 
 **このツール自身は Mend にログインできません。** セッション Cookie はブラウザ拡張が cookiejar-server に保存したものを使います。失効したら Discord に通知が飛ぶので、**人間がブラウザで developer.mend.io を開いてログインし直せば、拡張が自動で cookiejar を更新します**。CLI 側に GitHub のパスワードや TOTP を持たせる必要はありません。
 
-### なぜ Playwright が必要なのか
+### なぜ内部 API を直接叩くのか
 
 developer.mend.io の**公開 API は GitHub Secrets 管理専用**です（[Developer Platform API 1.0](https://api-docs.mend.io/developer-platform/1.0) の `/repos|orgs/.../secrets` 系 8 エンドポイントのみ）。リポジトリ一覧の取得・Renovate の enabled/disabled 状態の取得・scan のトリガーに相当する公開 API は存在しません。
 
@@ -32,7 +32,7 @@ developer.mend.io の**公開 API は GitHub Secrets 管理専用**です（[Dev
 - Mend Renovate CE/EE（self-hosted）には `POST /api/v1/repos/{org}/{repo}/-/jobs/run` がありますが、SaaS 版では使えません
 - ログインは GitHub OAuth のみ
 
-そのため Mend 側は認証済みブラウザから UI を操作しています。内部 API が判明すれば Playwright を捨てられます（`bun run observe` 参照）。
+そのため、**UI が叩いている内部 API を直接呼ぶ**方式を採っています。`x-app-id: 1` ヘッダと `mend_session` Cookie が必要です。
 
 ## 前提
 
@@ -117,32 +117,17 @@ bun run start
 
 ## 内部 API の調査
 
-Mend の UI 構成は公開されていないため、リポジトリ一覧のパス（`MEND_REPO_LIST_PATH`）やテーブル構造の既定値は暫定です。実物を確認するには：
-
-```bash
-bun run observe
-```
-
-cookiejar から Cookie を取ってブラウザを開き、リポジトリ一覧の表示と「Run Renovate scan」クリック時の通信を `./.mend/observed-api.json` と `./.mend/observe.har` に記録します。**scan は実際に Renovate ジョブを起動するので、必ず 1 リポジトリだけで試してください。**
-
-内部 API のエンドポイントが判明すれば Playwright を捨てて `fetch` だけで動かせるようになり、イメージサイズが劇的に小さくなります。
+`observe` は過去に Playwright で UI 構成を調査するために使っていましたが、内部 API が判明したため不要になりました。Mend の UI 変更で API が壊れた場合の再調査用に残しています。
 
 ## Docker
 
 ```bash
 docker build -t renovate-rerunner .
 
-docker run --rm --ipc=host --env-file .env renovate-rerunner --dry-run
+docker run --rm --env-file .env renovate-rerunner --dry-run
 ```
 
-`--ipc=host`（または `--shm-size=1gb`）は、コンテナ既定の `/dev/shm`（64MB）が小さく Chromium がクラッシュしやすい問題への対処です。
-
-ベースは `node:24-bookworm-slim` に **Chromium Headless Shell だけ**を入れた構成で、**1.4GB** です。Playwright 公式イメージ（`mcr.microsoft.com/playwright`）は全ブラウザ同梱で 2.9GB あり、後から `rm` してもベースのレイヤーは残るため pull サイズが減りません。CronJob として毎回 pull されるので、必要なものだけを入れる構成にしています。
-
-- `playwright install` は **`npx`（node）で実行**しています。`bunx` 経由だと ARM64 Docker で Bun 1.2 以降ほぼ確実にハングする既知の不具合（[oven-sh/bun#16708](https://github.com/oven-sh/bun/issues/16708)）があるためです
-- **`Dockerfile` の `playwright@x.y.z` と `package.json` の `playwright` のバージョンは必ず一致させてください**
-- headless shell しか入っていないため、**コンテナ内では `MEND_HEADLESS=false` が使えません**（headful デバッグはローカルで行ってください）
-- 非 root（`runner`, uid 1001）で実行します
+ベースは `oven/bun:1.3-alpine` で、**128MB** です。内部 API を直接叩く方式に切り替えたため Playwright は不要になりました。
 
 ## Kubernetes
 
@@ -153,8 +138,8 @@ docker run --rm --ipc=host --env-file .env renovate-rerunner --dry-run
 
 ## 既知の制約
 
-- **cookiejar は Cookie の有効期限を保存しません。** サーバー側の `entity.Cookie` に `MaxAge` フィールドが無く、保存前に破棄されるためです。よって取得した Cookie は必ずセッション Cookie として扱われ、**期限による失効の事前判定はできません**。失効しているかどうかは実際に Mend を開いてログイン画面にリダイレクトされるかで判定しています。
-- **Mend の UI 変更で壊れる可能性があります。** 公開 API が無いため UI に依存しています。壊れた場合は黙って続行せず明確なエラーで停止するので、`bun run observe` で再調査してください。
+- **cookiejar は Cookie の有効期限を保存しません。** サーバー側の `entity.Cookie` に `MaxAge` フィールドが無く、保存前に破棄されるためです。よって取得した Cookie は必ずセッション Cookie として扱われ、**期限による失効の事前判定はできません**。失効しているかどうかは実際に API を呼んで 401/403 が返るかで判定しています。
+- **Mend の内部 API が変わると壊れる可能性があります。** 公開 API が無いため内部 API に依存しています。壊れた場合は黙って続行せず明確なエラーで停止するので、`bun run observe` で再調査してください。
 - 判別できない Renovate ステータス文字列が現れた場合、**scan の対象にはせず** warn ログを出します。Mend が新しいステータスを返し始めたときに誤って scan を撃たないためです。
 - Cookie の更新は、ブラウザ拡張が対象サイトを開いている間のポーリングに依存します。人間が Mend を開かない限り Cookie は更新されません。
 

@@ -1,4 +1,18 @@
 /**
+ * cookiejar から取得した Cookie。Playwright の Cookie 型と同じ構造。
+ */
+export interface Cookie {
+	readonly name: string;
+	readonly value: string;
+	readonly domain: string;
+	readonly path: string;
+	readonly expires: number;
+	readonly httpOnly: boolean;
+	readonly secure: boolean;
+	readonly sameSite: "Strict" | "Lax" | "None";
+}
+
+/**
  * Mend 側の Renovate の有効状態。
  *
  * Mend は `onboarding` / `onboarded` / `activated` / `disabled` などの文字列を返すが、

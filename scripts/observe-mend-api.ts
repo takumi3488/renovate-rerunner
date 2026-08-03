@@ -51,11 +51,16 @@ interface ObservedCall {
 	readonly responseBody: string | null;
 }
 
-/** 内部 API の候補か判定する。HTML/画像/CSS などは除外し XHR と fetch だけを見る。 */
+/** 内部 API の候補か判定する。静的アセット（JS/CSS/画像/フォント）は除外し、XHR/fetch のように見えるものを拾う。 */
 function isApiCandidate(request: Request): boolean {
-	const type = request.resourceType();
-	if (type !== "xhr" && type !== "fetch") return false;
-	return request.url().includes("mend.io");
+	const url = request.url();
+	if (!url.includes("mend.io")) return false;
+	// 静的アセットは除外する（URL の拡張子で判定する。resourceType は HAR で null になることがある）。
+	if (/\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ico|map)(\?|$)/i.test(url))
+		return false;
+	// HTML ナビゲーションは除外する。
+	if (url === "https://developer.mend.io/" || url.endsWith("/")) return false;
+	return true;
 }
 
 async function main(): Promise<void> {
@@ -102,45 +107,66 @@ async function main(): Promise<void> {
 	/** いまどの操作を観測中かのラベル。あとから一覧取得と scan トリガーを切り分けるために使う。 */
 	let phase = "startup";
 
-	// page 単位ではなく context 単位で購読する。Mend UI が popup や新規タブを開いても取りこぼさない。
-	context.on("response", async (response: Response) => {
-		const request = response.request();
-		if (!isApiCandidate(request)) return;
-
-		let body: string | null = null;
-		try {
-			const text = await response.text();
-			body =
-				text.length > BODY_PREVIEW_LIMIT
-					? `${text.slice(0, BODY_PREVIEW_LIMIT)}…[truncated]`
-					: text;
-		} catch {
-			// リダイレクトなどボディを取得できないレスポンスがある。観測の失敗で全体を止めない。
-			body = null;
-		}
-
-		const headers = await request.allHeaders();
-		records.push({
-			phase,
-			method: request.method(),
-			url: response.url(),
-			status: response.status(),
-			resourceType: request.resourceType(),
-			requestHeaders: maskHeaders(headers),
-			cookieNames: cookieNames(headers.cookie),
-			requestBody: request.postData(),
-			responseContentType: response.headers()["content-type"],
-			responseBody: body,
-		});
-
-		console.log(
-			`  [${phase}] ${request.method()} ${response.status()} ${response.url()}`,
-		);
-	});
-
 	try {
 		const page = await context.newPage();
 		page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+
+		// リクエスト時点でヘッダを記録する（response より確実に発火するため）。
+		context.on("request", async (request: Request) => {
+			if (!isApiCandidate(request)) return;
+
+			const headers = await request.allHeaders();
+			records.push({
+				phase,
+				method: request.method(),
+				url: request.url(),
+				status: 0, // response 時点で上書きする
+				resourceType: request.resourceType(),
+				requestHeaders: maskHeaders(headers),
+				cookieNames: cookieNames(headers.cookie),
+				requestBody: request.postData(),
+				responseContentType: undefined,
+				responseBody: null,
+			});
+		});
+
+		// page 単位で購読する。context より確実に発火するため。
+		page.on("response", async (response: Response) => {
+			const request = response.request();
+			if (!isApiCandidate(request)) return;
+
+			let body: string | null = null;
+			try {
+				const text = await response.text();
+				body =
+					text.length > BODY_PREVIEW_LIMIT
+						? `${text.slice(0, BODY_PREVIEW_LIMIT)}…[truncated]`
+						: text;
+			} catch {
+				// リダイレクトなどボディを取得できないレスポンスがある。観測の失敗で全体を止めない。
+				body = null;
+			}
+
+			// request 時点の記録を探して status を上書きする（なければ新規追加）。
+			const existing = records.find(
+				(r) =>
+					r.url === response.url() &&
+					r.method === request.method() &&
+					r.status === 0,
+			);
+			if (existing) {
+				records[records.indexOf(existing)] = {
+					...existing,
+					status: response.status(),
+					responseContentType: response.headers()["content-type"],
+					responseBody: body,
+				};
+			}
+
+			console.log(
+				`  [${phase}] ${request.method()} ${response.status()} ${response.url()}`,
+			);
+		});
 
 		phase = "load-dashboard";
 		await page.goto(config.baseUrl);

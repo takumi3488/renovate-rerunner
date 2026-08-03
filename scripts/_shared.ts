@@ -3,6 +3,7 @@
  * CLI 本体（src/）からは import しない。
  */
 
+import { createInterface } from "node:readline";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -48,9 +49,13 @@ export function cookieNames(cookieHeader: string | undefined): string[] {
 /** ターミナルで Enter が押されるまで待つ。 */
 export async function waitForEnter(message: string): Promise<void> {
 	process.stdout.write(`\n${message}\n> `);
-	for await (const _line of console) {
-		break;
-	}
+	return new Promise((resolve) => {
+		const rl = createInterface({ input: process.stdin });
+		rl.once("line", () => {
+			rl.close();
+			resolve();
+		});
+	});
 }
 
 /** ファイルパスの親ディレクトリを作る。 */

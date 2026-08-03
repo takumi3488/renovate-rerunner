@@ -121,14 +121,6 @@ async function main(): Promise<number> {
 			limit: options.limit,
 		});
 
-		// Mend を操作した結果セッション Cookie が更新されている可能性があるため書き戻す。
-		// 書き戻しの失敗は本処理（scan のトリガー）の成否とは無関係なので、終了コードには
-		// 反映せず warn ログのみに留める。
-		const persisted = await mendClient.persistCookies();
-		if (!persisted) {
-			logger.warn("Mend セッション Cookie の書き戻しに失敗しました");
-		}
-
 		const exitCode = decideExitCode(summary.results, options.dryRun);
 		// org がまるごと処理できなかった場合、trigger が全成功していても成功扱いにはしない
 		if (summary.orgErrors.length > 0 && exitCode === EXIT_CODES.success) {

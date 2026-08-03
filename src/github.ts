@@ -244,10 +244,36 @@ export function createGithubClient(
 		);
 	}
 
+	/**
+	 * 指定した名前が「organization」か「user」かを判定する。
+	 * リポジトリ一覧のエンドポイントが /orgs/ と /users/ で分かれるため。
+	 */
+	async function resolveAccountType(
+		name: string,
+	): Promise<"Organization" | "User"> {
+		const url = `${GITHUB_API_BASE}/users/${encodeURIComponent(name)}`;
+		const response = await fetchWithRetry(url);
+		const body: unknown = await response.json();
+		if (typeof body !== "object" || body === null) {
+			throw new GithubApiError(
+				`GitHub API のレスポンスが不正です（アカウント情報がオブジェクトではありません）: ${name}`,
+			);
+		}
+		const type = (body as Record<string, unknown>).type;
+		if (type !== "Organization" && type !== "User") {
+			throw new GithubApiError(
+				`GitHub アカウントの種別を判定できませんでした: ${name}（type: ${String(type)}）`,
+			);
+		}
+		return type;
+	}
+
 	async function listOrgRepos(org: string): Promise<readonly GithubRepo[]> {
 		const repos: GithubRepo[] = [];
+		const accountType = await resolveAccountType(org);
+		const pathPrefix = accountType === "Organization" ? "orgs" : "users";
 		let url: string | undefined =
-			`${GITHUB_API_BASE}/orgs/${encodeURIComponent(org)}/repos?per_page=100&type=all`;
+			`${GITHUB_API_BASE}/${pathPrefix}/${encodeURIComponent(org)}/repos?per_page=100&type=all`;
 		let page = 0;
 
 		while (url !== undefined) {
