@@ -59,9 +59,8 @@ Mend セッションについて:
 
 環境変数（Mend 側の調整用）:
   MEND_BASE_URL                既定 https://developer.mend.io（EU リージョンなどで変更）
-  MEND_REPO_LIST_PATH          リポジトリ一覧のパス。既定 /orgs/github/{org}/repos
-                               UI 構成が違う場合は 'bun run observe' で確認して上書きする
-  MEND_HEADLESS                既定 true。false にするとブラウザを表示してデバッグできる
+  MEND_TRIGGER_INTERVAL_MS     scan トリガー間に挟む待機時間（ミリ秒）。既定 1000、0 で無効
+                               Mend 側のレート制限・過負荷を避けるためのもの
 
 環境変数（ログ）:
   LOG_FORMAT                   json を指定すると常に JSON Lines で出力する

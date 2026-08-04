@@ -4,7 +4,7 @@
  */
 
 import type { MendClient, MendRepo, MendTriggerResult } from "../mend/types";
-import { MendAuthError } from "../mend/types";
+import { MendAuthError, MendUiError } from "../mend/types";
 
 export interface FakeMendClientOptions {
 	/** org 名 → その org の Mend 側リポジトリ一覧。 */
@@ -13,10 +13,14 @@ export interface FakeMendClientOptions {
 	readonly triggerFailures?: Readonly<Record<string, string>>;
 	/** この org の listRepos で MendAuthError を投げる。 */
 	readonly authErrorOnListOrg?: string;
+	/** この org の listRepos で MendUiError を投げる。 */
+	readonly uiErrorOnListOrg?: string;
 	/** この `"org/repo"` の triggerScan で MendAuthError を投げる。 */
 	readonly authErrorOnTrigger?: string;
 	/** この org の listRepos で通常のエラーを投げる。 */
 	readonly listErrorOnOrg?: string;
+	/** これらの `"org/repo"` の triggerScan は 409（既にキュー済み）を返す。 */
+	readonly alreadyQueuedOnTrigger?: readonly string[];
 }
 
 export interface FakeMendClient extends MendClient {
@@ -45,6 +49,11 @@ export function createFakeMendClient(
 			if (options.authErrorOnListOrg === org) {
 				throw new MendAuthError(`fake: セッションが失効しました (${org})`);
 			}
+			if (options.uiErrorOnListOrg === org) {
+				throw new MendUiError(
+					`fake: レスポンス構造が想定と異なります (${org})`,
+				);
+			}
 			if (options.listErrorOnOrg === org) {
 				throw new Error(`fake: 一覧取得に失敗しました (${org})`);
 			}
@@ -60,6 +69,9 @@ export function createFakeMendClient(
 				throw new MendAuthError(`fake: セッションが失効しました (${key})`);
 			}
 			triggeredScans.push(key);
+			if (options.alreadyQueuedOnTrigger?.includes(key)) {
+				return { ok: true, alreadyQueued: true };
+			}
 			const reason = options.triggerFailures?.[key];
 			return reason === undefined ? { ok: true } : { ok: false, reason };
 		},

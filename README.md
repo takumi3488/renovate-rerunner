@@ -98,14 +98,15 @@ bun run start
 | `COOKIEJAR_TIMEOUT_MS` | | `10000` | cookiejar への通信タイムアウト |
 | `DISCORD_WEBHOOK_URL` | | | ログインが必要になったときの通知先。未設定なら通知しない |
 | `MEND_BASE_URL` | | `https://developer.mend.io` | EU リージョンなどで変更 |
-| `MEND_REPO_LIST_PATH` | | `/orgs/github/{org}/repos` | リポジトリ一覧のパス |
-| `MEND_HEADLESS` | | `true` | `false` でブラウザを表示してデバッグ |
+| `MEND_TRIGGER_INTERVAL_MS` | | `1000` | scan トリガー間に挟む待機時間（ミリ秒）。0 で無効 |
 | `LOG_FORMAT` | | | `json` で常に JSON Lines（既定は非 TTY 時に自動） |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | | | 設定するとトレースを OTLP/HTTP で送信（例: `http://otel-collector:4318`）。未設定なら計測は無効 |
 | `OTEL_SERVICE_NAME` | | `renovate-rerunner` | トレースの `service.name` |
 | `OTEL_SDK_DISABLED` | | | `true` でエンドポイント設定時も計測を無効化 |
 
-`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_RESOURCE_ATTRIBUTES` などの標準環境変数も SDK の既定通りに解釈されます。org 単位の処理・GitHub/Mend/cookiejar への各 API 呼び出しが span として記録され、属性には org 名・リポジトリ名・件数・終了コードのみを含め、認証情報は含めません。
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_RESOURCE_ATTRIBUTES` などの標準環境変数も SDK の既定通りに解釈されます。org 単位の処理・GitHub/Mend/cookiejar への各 API 呼び出しが span として記録され、属性には org 名・リポジトリ名・件数・HTTP ステータス・終了コードのみを含め、認証情報は含めません。
+
+個別リポジトリの scan 失敗（409/500/ネットワークエラー）は `mend.trigger_scan` span を ERROR にせず、属性（`rerunner.trigger.ok` / `http.response.status_code` など）で表現します。失敗の集計はルート span の `rerunner.failed_count` と終了コードで行うため、トレースで失敗を追う場合はそちらを参照してください。
 
 `COOKIEJAR_HOSTS` に `developer.mend.io,github.com` のように複数指定すると、GitHub の Cookie もブラウザに注入されます（拡張は github.com も対象にしているため）。
 
@@ -122,7 +123,9 @@ bun run start
 
 ## 内部 API の調査
 
-`observe` は過去に Playwright で UI 構成を調査するために使っていましたが、内部 API が判明したため不要になりました。Mend の UI 変更で API が壊れた場合の再調査用に残しています。
+`bun run observe` で、cookiejar のセッションを使ってリポジトリ一覧 API の疎通確認とレスポンス構造の確認ができます。Mend 側の構造変更で CLI が `MendUiError` で停止した場合の再調査に使ってください。
+
+scan のトリガー（`POST /renovate/job/add`）は実際に Renovate ジョブが走るため、このスクリプトからは実行しません。トリガー時の通信を再調査する場合は、ブラウザの DevTools で developer.mend.io の Network タブを開き、UI 上で「Run Renovate scan」を 1 件だけ実行して確認してください。
 
 ## Docker
 
@@ -164,7 +167,7 @@ proto から gRPC クライアントを再生成する場合：
 bunx buf generate   # proto/ → src/gen/
 ```
 
-Playwright を使う部分（`src/mend/auth.ts`, `src/mend/client.ts`, `scripts/`）は CI で実行しません。テストの対象は純粋関数と、依存性注入で差し替え可能な境界です。特に以下がこのツールの中核で、テストもそこに集中しています。
+内部 API クライアント（`src/mend/client.ts`）は fetch を差し替えたユニットテストでカバーしています。CI で実行しないのは `scripts/`（対話的な調査用）だけです。テストの対象は純粋関数と、依存性注入で差し替え可能な境界です。特に以下がこのツールの中核で、テストもそこに集中しています。
 
 - `src/match.ts` — GitHub と Mend の突合ロジック
-- `src/cookiejar/cookie-string.ts` — Reader が返す Cookie ヘッダー文字列と Playwright の Cookie 配列の相互変換
+- `src/cookiejar/cookie-string.ts` — Reader が返す Cookie ヘッダー文字列と Cookie 配列の相互変換

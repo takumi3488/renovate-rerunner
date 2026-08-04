@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { GithubClient } from "./github";
 import { createLogger } from "./logger";
-import { MendAuthError } from "./mend/types";
+import { MendAuthError, MendUiError } from "./mend/types";
 import { run } from "./orchestrator";
 import { createFakeMendClient, mendRepo } from "./testing/fake-mend-client";
 import type { GithubRepo } from "./types";
@@ -358,5 +358,138 @@ describe("run", () => {
 		expect(mend.triggeredScans).toEqual([]);
 		expect(summary.targetCount).toBe(0);
 		expect(summary.triggeredCount).toBe(0);
+	});
+
+	test("409: alreadyQueued の結果は alreadyQueuedCount に数え、triggeredCount には含めない", async () => {
+		const github = fakeGithubClient({
+			[ORG_A]: [githubRepo({ name: "repo-a" }), githubRepo({ name: "repo-b" })],
+		});
+		const mend = createFakeMendClient({
+			reposByOrg: {
+				[ORG_A]: [
+					mendRepo("repo-a", "disabled"),
+					mendRepo("repo-b", "disabled"),
+				],
+			},
+			alreadyQueuedOnTrigger: [`${ORG_A}/repo-a`],
+		});
+		const { logger, lines } = collectingLogger();
+
+		const summary = await run({
+			orgs: [ORG_A],
+			githubClient: github,
+			mendClient: mend,
+			logger,
+			dryRun: false,
+		});
+
+		expect(mend.triggeredScans).toEqual([`${ORG_A}/repo-a`, `${ORG_A}/repo-b`]);
+		expect(summary.results).toEqual([
+			{ ok: true, alreadyQueued: true },
+			{ ok: true },
+		]);
+		expect(summary.alreadyQueuedCount).toBe(1);
+		expect(summary.triggeredCount).toBe(1);
+		expect(summary.failedCount).toBe(0);
+		const infoLines = lines
+			.map((line) => JSON.parse(line))
+			.filter((entry) => entry.level === "info");
+		expect(
+			infoLines.some((entry) =>
+				entry.msg.includes("既にキューにあるためスキップ"),
+			),
+		).toBe(true);
+	});
+
+	test("triggerIntervalMs: 2 件目の trigger 前にだけ sleep が呼ばれる", async () => {
+		const github = fakeGithubClient({
+			[ORG_A]: [githubRepo({ name: "repo-a" }), githubRepo({ name: "repo-b" })],
+		});
+		const mend = createFakeMendClient({
+			reposByOrg: {
+				[ORG_A]: [
+					mendRepo("repo-a", "disabled"),
+					mendRepo("repo-b", "disabled"),
+				],
+			},
+		});
+		const { logger } = collectingLogger();
+		const sleepCalls: { ms: number; triggeredSoFar: number }[] = [];
+
+		await run({
+			orgs: [ORG_A],
+			githubClient: github,
+			mendClient: mend,
+			logger,
+			dryRun: false,
+			triggerIntervalMs: 100,
+			sleep: (ms) => {
+				sleepCalls.push({ ms, triggeredSoFar: mend.triggeredScans.length });
+				return Promise.resolve();
+			},
+		});
+
+		// 1 件目の前には待機せず、2 件目の前に 1 回だけ待機する
+		expect(sleepCalls).toEqual([{ ms: 100, triggeredSoFar: 1 }]);
+		expect(mend.triggeredScans).toEqual([`${ORG_A}/repo-a`, `${ORG_A}/repo-b`]);
+	});
+
+	test("triggerIntervalMs が 0 なら sleep は呼ばれない", async () => {
+		const github = fakeGithubClient({
+			[ORG_A]: [githubRepo({ name: "repo-a" }), githubRepo({ name: "repo-b" })],
+		});
+		const mend = createFakeMendClient({
+			reposByOrg: {
+				[ORG_A]: [
+					mendRepo("repo-a", "disabled"),
+					mendRepo("repo-b", "disabled"),
+				],
+			},
+		});
+		const { logger } = collectingLogger();
+		let sleepCalled = false;
+
+		await run({
+			orgs: [ORG_A],
+			githubClient: github,
+			mendClient: mend,
+			logger,
+			dryRun: false,
+			triggerIntervalMs: 0,
+			sleep: () => {
+				sleepCalled = true;
+				return Promise.resolve();
+			},
+		});
+
+		expect(sleepCalled).toBe(false);
+	});
+
+	test("MendUiError: listRepos で投げられたら fatal として伝播し、以降の org は処理されない", async () => {
+		const github = fakeGithubClient({
+			[ORG_A]: [githubRepo({ name: "repo-a" })],
+			[ORG_B]: [githubRepo({ name: "repo-c" })],
+		});
+		const mend = createFakeMendClient({
+			reposByOrg: {
+				[ORG_A]: [mendRepo("repo-a", "disabled")],
+				[ORG_B]: [mendRepo("repo-c", "disabled")],
+			},
+			uiErrorOnListOrg: ORG_A,
+		});
+		const { logger } = collectingLogger();
+
+		await expect(
+			run({
+				orgs: [ORG_A, ORG_B],
+				githubClient: github,
+				mendClient: mend,
+				logger,
+				dryRun: false,
+			}),
+		).rejects.toBeInstanceOf(MendUiError);
+
+		expect(mend.listedOrgs).toEqual([ORG_A]);
+		expect(mend.triggeredScans).toEqual([]);
 	});
 });
