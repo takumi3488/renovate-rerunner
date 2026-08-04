@@ -1,3 +1,5 @@
+import { SpanKind } from "@opentelemetry/api";
+import { withSpan } from "./telemetry";
 import type { GithubRepo } from "./types";
 
 /**
@@ -269,36 +271,47 @@ export function createGithubClient(
 	}
 
 	async function listOrgRepos(org: string): Promise<readonly GithubRepo[]> {
-		const repos: GithubRepo[] = [];
-		const accountType = await resolveAccountType(org);
-		const pathPrefix = accountType === "Organization" ? "orgs" : "users";
-		let url: string | undefined =
-			`${GITHUB_API_BASE}/${pathPrefix}/${encodeURIComponent(org)}/repos?per_page=100&type=all`;
-		let page = 0;
+		return withSpan(
+			"github.list_org_repos",
+			{ attributes: { "rerunner.org": org }, kind: SpanKind.CLIENT },
+			async (span) => {
+				const repos: GithubRepo[] = [];
+				const accountType = await resolveAccountType(org);
+				span.setAttribute("rerunner.github.account_type", accountType);
+				const pathPrefix = accountType === "Organization" ? "orgs" : "users";
+				let url: string | undefined =
+					`${GITHUB_API_BASE}/${pathPrefix}/${encodeURIComponent(org)}/repos?per_page=100&type=all`;
+				let page = 0;
 
-		while (url !== undefined) {
-			page++;
-			if (page > maxPages) {
-				throw new GithubApiError(
-					`ページネーションの安全弁（maxPages: ${maxPages}）を超えました。org: ${org}`,
-				);
-			}
+				while (url !== undefined) {
+					page++;
+					if (page > maxPages) {
+						throw new GithubApiError(
+							`ページネーションの安全弁（maxPages: ${maxPages}）を超えました。org: ${org}`,
+						);
+					}
 
-			const response = await fetchWithRetry(url);
-			const body: unknown = await response.json();
-			if (!Array.isArray(body)) {
-				throw new GithubApiError("GitHub API のレスポンスが配列ではありません");
-			}
+					const response = await fetchWithRetry(url);
+					const body: unknown = await response.json();
+					if (!Array.isArray(body)) {
+						throw new GithubApiError(
+							"GitHub API のレスポンスが配列ではありません",
+						);
+					}
 
-			for (const item of body) {
-				repos.push(toGithubRepo(item));
-			}
+					for (const item of body) {
+						repos.push(toGithubRepo(item));
+					}
 
-			// 2 ページ目以降は Link ヘッダから得た URL をそのまま使い、クエリを自前で組み立て直さない。
-			url = parseNextLink(response.headers.get("link"));
-		}
+					// 2 ページ目以降は Link ヘッダから得た URL をそのまま使い、クエリを自前で組み立て直さない。
+					url = parseNextLink(response.headers.get("link"));
+				}
 
-		return repos;
+				span.setAttribute("rerunner.github.repo_count", repos.length);
+				span.setAttribute("rerunner.github.page_count", page);
+				return repos;
+			},
+		);
 	}
 
 	return { listOrgRepos };

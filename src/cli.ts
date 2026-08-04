@@ -67,6 +67,15 @@ Mend セッションについて:
   LOG_FORMAT                   json を指定すると常に JSON Lines で出力する
                                （既定は非 TTY のとき自動で JSON になる）
 
+環境変数（OpenTelemetry）:
+  OTEL_EXPORTER_OTLP_ENDPOINT  設定するとトレースを OTLP/HTTP で送信する
+                               （例: http://otel-collector:4318）。未設定なら計測は無効
+  OTEL_SERVICE_NAME            service.name。既定 renovate-rerunner
+  OTEL_SDK_DISABLED            true を指定するとエンドポイント設定時も計測を無効化
+                               このほか OTEL_EXPORTER_OTLP_TRACES_ENDPOINT /
+                               OTEL_EXPORTER_OTLP_HEADERS / OTEL_RESOURCE_ATTRIBUTES
+                               などの標準変数も SDK の既定通りに解釈する
+
 終了コード:
   0  正常終了（検出 0 件 / 全件成功 / dry-run）
   1  一部の scan トリガーが失敗した

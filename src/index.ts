@@ -3,6 +3,8 @@
  * 制御フロー本体は orchestrator.ts の run() に集約されている。
  */
 
+import type { Span } from "@opentelemetry/api";
+import { SpanStatusCode } from "@opentelemetry/api";
 import type { CliOptions } from "./cli";
 import { CliError, HELP_TEXT, parseCliArgs } from "./cli";
 import { loadConfig } from "./config";
@@ -15,6 +17,7 @@ import { createMendClient } from "./mend/client";
 import type { Notifier } from "./notify/discord";
 import { createNotifier, loadWebhookUrl } from "./notify/discord";
 import { run } from "./orchestrator";
+import { initTelemetry, type Telemetry, withSpan } from "./telemetry";
 
 /**
  * エラーの name プロパティを取り出す。
@@ -70,7 +73,7 @@ async function notifyFatalError(
 	});
 }
 
-async function main(): Promise<number> {
+async function main(rootSpan: Span, telemetry: Telemetry): Promise<number> {
 	let options: CliOptions;
 	try {
 		options = parseCliArgs(process.argv.slice(2));
@@ -78,6 +81,7 @@ async function main(): Promise<number> {
 		if (err instanceof CliError) {
 			console.error(err.message);
 			console.error(HELP_TEXT);
+			rootSpan.setAttribute("rerunner.exit_code", EXIT_CODES.fatal);
 			return EXIT_CODES.fatal;
 		}
 		throw err;
@@ -88,7 +92,17 @@ async function main(): Promise<number> {
 		return EXIT_CODES.success;
 	}
 
+	rootSpan.setAttribute("rerunner.dry_run", options.dryRun);
+	if (options.limit !== undefined) {
+		rootSpan.setAttribute("rerunner.limit", options.limit);
+	}
+
 	const logger = createLogger({ verbose: options.verbose });
+	if (telemetry.enabled) {
+		logger.debug("OpenTelemetry のトレース送信が有効です", {
+			serviceName: telemetry.serviceName,
+		});
+	}
 
 	// 後続のどの失敗でも通知できるよう、設定読み込みより前に notifier を作る。
 	const notifier = createNotifier({ webhookUrl: loadWebhookUrl(), logger });
@@ -100,6 +114,7 @@ async function main(): Promise<number> {
 		const config = loadConfig();
 		// --org が指定されていれば GITHUB_ORGS より優先する
 		orgs = options.orgs ?? config.orgs;
+		rootSpan.setAttribute("rerunner.orgs", [...orgs]);
 
 		const githubClient = createGithubClient(config.githubToken);
 		const cookiejarClient = createCookiejarClient({
@@ -120,19 +135,40 @@ async function main(): Promise<number> {
 			dryRun: options.dryRun,
 			limit: options.limit,
 		});
+		rootSpan.setAttributes({
+			"rerunner.target_count": summary.targetCount,
+			"rerunner.triggered_count": summary.triggeredCount,
+			"rerunner.failed_count": summary.failedCount,
+			"rerunner.skipped_by_limit": summary.skippedByLimit,
+			"rerunner.org_error_count": summary.orgErrors.length,
+		});
 
 		const exitCode = decideExitCode(summary.results, options.dryRun);
 		// org がまるごと処理できなかった場合、trigger が全成功していても成功扱いにはしない
-		if (summary.orgErrors.length > 0 && exitCode === EXIT_CODES.success) {
-			return EXIT_CODES.partialFailure;
+		const finalExitCode =
+			summary.orgErrors.length > 0 && exitCode === EXIT_CODES.success
+				? EXIT_CODES.partialFailure
+				: exitCode;
+		rootSpan.setAttribute("rerunner.exit_code", finalExitCode);
+		if (finalExitCode !== EXIT_CODES.success) {
+			// CronJob の異常をトレース側から拾えるよう、非ゼロ終了は ERROR ステータスにする。
+			rootSpan.setStatus({
+				code: SpanStatusCode.ERROR,
+				message: `exit code: ${finalExitCode}`,
+			});
 		}
 		// summary.orgErrors や failedCount が示す個別 org・リポジトリ単位の失敗は Discord に
 		// 通知しない。CronJob は 6 時間おきに動く前提であり、個別の scan 失敗まで通知すると
 		// ノイズになるため、ログと終了コードで表現すれば十分と判断した。通知は致命的エラー
 		// （下の catch 節）でのみ行う。
-		return exitCode;
+		return finalExitCode;
 	} catch (err) {
 		const { code, message, hint } = describeFatalError(err);
+		rootSpan.setAttribute("rerunner.exit_code", code);
+		rootSpan.setStatus({ code: SpanStatusCode.ERROR, message });
+		if (err instanceof Error) {
+			rootSpan.recordException(err);
+		}
 		logger.error(message);
 		if (hint) {
 			logger.error(hint);
@@ -146,4 +182,18 @@ async function main(): Promise<number> {
 	}
 }
 
-process.exit(await main());
+const telemetry = await initTelemetry();
+// main は自分で全例外を catch して終了コードを返す設計だが、万が一投げた場合に
+// 未初期化のまま process.exit へ進まないよう fatal で初期化しておく。
+let exitCode: number = EXIT_CODES.fatal;
+try {
+	// ルート span。org 処理・各 API 呼び出しの span はすべてこの子孫になる。
+	exitCode = await withSpan("renovate-rerunner.run", {}, (span) =>
+		main(span, telemetry),
+	);
+} finally {
+	// BatchSpanProcessor のキューに残った span を flush してから終了する。
+	// process.exit を先に呼ぶと finally が実行されないため、順序が重要。
+	await telemetry.shutdown();
+}
+process.exit(exitCode);

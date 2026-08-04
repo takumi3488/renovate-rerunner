@@ -101,6 +101,11 @@ bun run start
 | `MEND_REPO_LIST_PATH` | | `/orgs/github/{org}/repos` | リポジトリ一覧のパス |
 | `MEND_HEADLESS` | | `true` | `false` でブラウザを表示してデバッグ |
 | `LOG_FORMAT` | | | `json` で常に JSON Lines（既定は非 TTY 時に自動） |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | | | 設定するとトレースを OTLP/HTTP で送信（例: `http://otel-collector:4318`）。未設定なら計測は無効 |
+| `OTEL_SERVICE_NAME` | | `renovate-rerunner` | トレースの `service.name` |
+| `OTEL_SDK_DISABLED` | | | `true` でエンドポイント設定時も計測を無効化 |
+
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_RESOURCE_ATTRIBUTES` などの標準環境変数も SDK の既定通りに解釈されます。org 単位の処理・GitHub/Mend/cookiejar への各 API 呼び出しが span として記録され、属性には org 名・リポジトリ名・件数・終了コードのみを含め、認証情報は含めません。
 
 `COOKIEJAR_HOSTS` に `developer.mend.io,github.com` のように複数指定すると、GitHub の Cookie もブラウザに注入されます（拡張は github.com も対象にしているため）。
 
