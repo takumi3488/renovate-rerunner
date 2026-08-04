@@ -10,6 +10,7 @@ import type { Logger } from "./logger";
 import { findScanTargets } from "./match";
 import type { MendClient, MendTriggerResult } from "./mend/types";
 import { MendAuthError } from "./mend/types";
+import { withSpan } from "./telemetry";
 
 export interface RunOptions {
 	readonly orgs: readonly string[];
@@ -56,96 +57,111 @@ export async function run(options: RunOptions): Promise<RunSummary> {
 	// org は逐次処理する。Mend 側は単一ブラウザセッションなので並列化しても速くならず、
 	// 状態切り替え（一覧ページの org 切り替えなど）が競合するだけ。
 	for (const org of orgs) {
-		let matchResult: ReturnType<typeof findScanTargets>;
-		try {
-			// GitHub と Mend の一覧取得は互いに独立しているので同時に投げてよい。
-			const [githubRepos, mendRepos] = await Promise.all([
-				githubClient.listOrgRepos(org),
-				mendClient.listRepos(org),
-			]);
-			matchResult = findScanTargets(org, githubRepos, mendRepos);
-		} catch (err) {
-			if (err instanceof MendAuthError) {
-				// セッションが壊れている = 残りの org を処理しても全滅が確定している。
-				// 無駄な GitHub API 呼び出しを避けるため、ここまでのログを残したまま再 throw する。
-				throw err;
-			}
-			// GithubApiError や Mend 一覧取得の失敗など。org 名のタイポ 1 つで
-			// 他の org の処理まで止めないよう、この org だけスキップして継続する。
-			const message = toMessage(err);
-			logger.error("org の処理に失敗したためスキップします", {
-				org,
-				error: message,
-			});
-			orgErrors.push({ org, message });
-			continue;
-		}
-
-		if (matchResult.unknownStatuses.length > 0) {
-			// Mend が新しいステータス文字列を返し始めた兆候。運用者が気づけるよう warn にする。
-			logger.warn("Mend が未知の Renovate ステータスを返しました", {
-				org,
-				unknownStatuses: matchResult.unknownStatuses,
-			});
-		}
-		if (matchResult.skippedNotInGithub.length > 0) {
-			// archived/fork/削除済みなど正常なケースなので info に留める。
-			logger.info(
-				"GitHub 側に見つからないため対象外にしたリポジトリがあります",
-				{
-					org,
-					count: matchResult.skippedNotInGithub.length,
-				},
-			);
-		}
-
-		targetCount += matchResult.targets.length;
-
-		if (dryRun) {
-			// dry-run では triggerScan を絶対に呼ばない。検出結果を出すだけ。
-			for (const target of matchResult.targets) {
-				logger.info("dry-run: scan 対象を検出しました", {
-					org: target.org,
-					githubRepoName: target.githubRepoName,
-					mendRepoName: target.mendRepoName,
-				});
-			}
-			continue;
-		}
-
-		for (const target of matchResult.targets) {
-			if (limit !== undefined && results.length >= limit) {
-				// 黙って打ち切ると「全部処理した」と誤読されるため、到達した瞬間に明示する。
-				if (!limitWarned) {
-					logger.warn("limit に達したため残りの scan はスキップします", {
-						limit,
+		// org 単位の span で囲み、失敗した org の切り分けをトレース上でも容易にする。
+		// ループの continue に相当する早期終了は、withSpan のコールバックから return することで表現する。
+		await withSpan(
+			"orchestrator.process_org",
+			{ attributes: { "rerunner.org": org } },
+			async (span) => {
+				let matchResult: ReturnType<typeof findScanTargets>;
+				try {
+					// GitHub と Mend の一覧取得は互いに独立しているので同時に投げてよい。
+					const [githubRepos, mendRepos] = await Promise.all([
+						githubClient.listOrgRepos(org),
+						mendClient.listRepos(org),
+					]);
+					matchResult = findScanTargets(org, githubRepos, mendRepos);
+				} catch (err) {
+					if (err instanceof MendAuthError) {
+						// セッションが壊れている = 残りの org を処理しても全滅が確定している。
+						// 無駄な GitHub API 呼び出しを避けるため、ここまでのログを残したまま再 throw する。
+						throw err;
+					}
+					// GithubApiError や Mend 一覧取得の失敗など。org 名のタイポ 1 つで
+					// 他の org の処理まで止めないよう、この org だけスキップして継続する。
+					const message = toMessage(err);
+					logger.error("org の処理に失敗したためスキップします", {
+						org,
+						error: message,
 					});
-					limitWarned = true;
+					orgErrors.push({ org, message });
+					span.setAttribute("rerunner.org_error", message);
+					return;
 				}
-				skippedByLimit++;
-				continue;
-			}
 
-			// triggerScan は自動リトライしない（同一 scan の二重トリガーを避けるため）。
-			// MendAuthError はここで捕まえず、そのまま呼び出し元へ伝播させる
-			// （＝この時点までの成功/失敗ログは既に出力済みの状態で中断する）。
-			const result = await mendClient.triggerScan(org, target.mendRepoName);
-			results.push(result);
-			if (result.ok) {
-				triggeredCount++;
-				logger.info("scan をトリガーしました", {
-					org,
-					mendRepoName: target.mendRepoName,
-				});
-			} else {
-				failedCount++;
-				logger.error("scan のトリガーに失敗しました", {
-					org,
-					mendRepoName: target.mendRepoName,
-					reason: result.reason,
-				});
-			}
-		}
+				span.setAttribute(
+					"rerunner.unknown_status_count",
+					matchResult.unknownStatuses.length,
+				);
+				span.setAttribute("rerunner.target_count", matchResult.targets.length);
+
+				if (matchResult.unknownStatuses.length > 0) {
+					// Mend が新しいステータス文字列を返し始めた兆候。運用者が気づけるよう warn にする。
+					logger.warn("Mend が未知の Renovate ステータスを返しました", {
+						org,
+						unknownStatuses: matchResult.unknownStatuses,
+					});
+				}
+				if (matchResult.skippedNotInGithub.length > 0) {
+					// archived/fork/削除済みなど正常なケースなので info に留める。
+					logger.info(
+						"GitHub 側に見つからないため対象外にしたリポジトリがあります",
+						{
+							org,
+							count: matchResult.skippedNotInGithub.length,
+						},
+					);
+				}
+
+				targetCount += matchResult.targets.length;
+
+				if (dryRun) {
+					// dry-run では triggerScan を絶対に呼ばない。検出結果を出すだけ。
+					for (const target of matchResult.targets) {
+						logger.info("dry-run: scan 対象を検出しました", {
+							org: target.org,
+							githubRepoName: target.githubRepoName,
+							mendRepoName: target.mendRepoName,
+						});
+					}
+					return;
+				}
+
+				for (const target of matchResult.targets) {
+					if (limit !== undefined && results.length >= limit) {
+						// 黙って打ち切ると「全部処理した」と誤読されるため、到達した瞬間に明示する。
+						if (!limitWarned) {
+							logger.warn("limit に達したため残りの scan はスキップします", {
+								limit,
+							});
+							limitWarned = true;
+						}
+						skippedByLimit++;
+						continue;
+					}
+
+					// triggerScan は自動リトライしない（同一 scan の二重トリガーを避けるため）。
+					// MendAuthError はここで捕まえず、そのまま呼び出し元へ伝播させる
+					// （＝この時点までの成功/失敗ログは既に出力済みの状態で中断する）。
+					const result = await mendClient.triggerScan(org, target.mendRepoName);
+					results.push(result);
+					if (result.ok) {
+						triggeredCount++;
+						logger.info("scan をトリガーしました", {
+							org,
+							mendRepoName: target.mendRepoName,
+						});
+					} else {
+						failedCount++;
+						logger.error("scan のトリガーに失敗しました", {
+							org,
+							mendRepoName: target.mendRepoName,
+							reason: result.reason,
+						});
+					}
+				}
+			},
+		);
 	}
 
 	// ログを流し読みしても結果が分かるよう、最後に 1 行でまとめる。

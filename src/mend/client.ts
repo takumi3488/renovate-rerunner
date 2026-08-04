@@ -11,8 +11,10 @@
  * - 必須ヘッダ: `x-app-id: 1`、`Cookie: mend_session=...`
  */
 
+import { SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import type { CookiejarClient } from "../cookiejar/client";
 import type { Logger } from "../logger";
+import { withSpan } from "../telemetry";
 import type { MendConfig } from "./config";
 import { loadMendConfig } from "./config";
 import type {
@@ -127,57 +129,85 @@ export async function createMendClient(
 
 	return {
 		async listRepos(org: string): Promise<readonly MendRepo[]> {
-			const repos: MendRepo[] = [];
-			let page = 0;
-			let totalPages = 1;
+			return withSpan(
+				"mend.list_repos",
+				{ attributes: { "rerunner.org": org }, kind: SpanKind.CLIENT },
+				async (span) => {
+					const repos: MendRepo[] = [];
+					let page = 0;
+					let totalPages = 1;
 
-			while (page < totalPages) {
-				const data = await mendFetch<MendRepoResponse>(
-					`/api/orgs/github/${encodeURIComponent(org)}/repos?page=${page}&size=${PAGE_SIZE}&renovateStatuses=disabled`,
-				);
+					while (page < totalPages) {
+						const data = await mendFetch<MendRepoResponse>(
+							`/api/orgs/github/${encodeURIComponent(org)}/repos?page=${page}&size=${PAGE_SIZE}&renovateStatuses=disabled`,
+						);
 
-				for (const item of data.content ?? []) {
-					repos.push({
-						name: item.name,
-						renovateStatus: parseRenovateStatus(item.renovateStatus ?? ""),
+						for (const item of data.content ?? []) {
+							repos.push({
+								name: item.name,
+								renovateStatus: parseRenovateStatus(item.renovateStatus ?? ""),
+							});
+						}
+
+						totalPages = data.totalPages ?? 1;
+						page += 1;
+					}
+
+					span.setAttribute("rerunner.mend.repo_count", repos.length);
+					span.setAttribute("rerunner.mend.page_count", page);
+					logger.debug("Mend からリポジトリを読み取った", {
+						org,
+						count: repos.length,
 					});
-				}
-
-				totalPages = data.totalPages ?? 1;
-				page += 1;
-			}
-
-			logger.debug("Mend からリポジトリを読み取った", {
-				org,
-				count: repos.length,
-			});
-			return repos;
+					return repos;
+				},
+			);
 		},
 
 		async triggerScan(
 			org: string,
 			mendRepoName: string,
 		): Promise<MendTriggerResult> {
-			try {
-				await mendFetch(
-					`/api/repos/github/${encodeURIComponent(org)}/${encodeURIComponent(mendRepoName)}/renovate/job/add`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ selectedBranches: [] }),
+			return withSpan(
+				"mend.trigger_scan",
+				{
+					attributes: {
+						"rerunner.org": org,
+						"rerunner.mend.repo": mendRepoName,
 					},
-				);
-				logger.debug("scan をトリガーした", { org, repo: mendRepoName });
-				return { ok: true };
-			} catch (error) {
-				if (error instanceof MendAuthError || error instanceof MendUiError) {
-					throw error;
-				}
-				return {
-					ok: false,
-					reason: `scan のトリガーに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-				};
-			}
+					kind: SpanKind.CLIENT,
+				},
+				async (span) => {
+					try {
+						await mendFetch(
+							`/api/repos/github/${encodeURIComponent(org)}/${encodeURIComponent(mendRepoName)}/renovate/job/add`,
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ selectedBranches: [] }),
+							},
+						);
+						span.setAttribute("rerunner.trigger.ok", true);
+						logger.debug("scan をトリガーした", { org, repo: mendRepoName });
+						return { ok: true };
+					} catch (error) {
+						if (
+							error instanceof MendAuthError ||
+							error instanceof MendUiError
+						) {
+							throw error;
+						}
+						// 例外ではなく戻り値で失敗を表す経路なので、span のステータスはここで自分で落とす。
+						const reason = `scan のトリガーに失敗しました: ${error instanceof Error ? error.message : String(error)}`;
+						span.setAttribute("rerunner.trigger.ok", false);
+						span.setStatus({ code: SpanStatusCode.ERROR, message: reason });
+						return {
+							ok: false,
+							reason,
+						};
+					}
+				},
+			);
 		},
 
 		async [Symbol.asyncDispose](): Promise<void> {
