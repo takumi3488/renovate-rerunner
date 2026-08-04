@@ -9,7 +9,7 @@ import type { GithubClient } from "./github";
 import type { Logger } from "./logger";
 import { findScanTargets } from "./match";
 import type { MendClient, MendTriggerResult } from "./mend/types";
-import { MendAuthError } from "./mend/types";
+import { MendAuthError, MendUiError } from "./mend/types";
 import { withSpan } from "./telemetry";
 
 export interface RunOptions {
@@ -20,6 +20,13 @@ export interface RunOptions {
 	readonly dryRun: boolean;
 	/** scan をトリガーする最大件数（org 横断の合計）。 */
 	readonly limit?: number;
+	/**
+	 * trigger 間に挟む待機時間（ミリ秒）。Mend 側のレート制限回避用。
+	 * 省略時・0 以下は待機なし。最初の 1 件目の前には待機しない。
+	 */
+	readonly triggerIntervalMs?: number;
+	/** テスト用。triggerIntervalMs の待機に使う関数。省略時は setTimeout ベース。 */
+	readonly sleep?: (ms: number) => Promise<void>;
 }
 
 export interface RunSummary {
@@ -27,6 +34,8 @@ export interface RunSummary {
 	readonly results: readonly MendTriggerResult[];
 	readonly targetCount: number;
 	readonly triggeredCount: number;
+	/** 409 で「既にキュー済み」だった件数。triggeredCount とは別に数える。 */
+	readonly alreadyQueuedCount: number;
 	readonly failedCount: number;
 	/** limit に達したため実行しなかった件数。 */
 	readonly skippedByLimit: number;
@@ -44,11 +53,16 @@ function toMessage(err: unknown): string {
 
 export async function run(options: RunOptions): Promise<RunSummary> {
 	const { orgs, githubClient, mendClient, logger, dryRun, limit } = options;
+	const triggerIntervalMs = options.triggerIntervalMs ?? 0;
+	const sleep =
+		options.sleep ??
+		((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
 	const results: MendTriggerResult[] = [];
 	const orgErrors: { org: string; message: string }[] = [];
 	let targetCount = 0;
 	let triggeredCount = 0;
+	let alreadyQueuedCount = 0;
 	let failedCount = 0;
 	let skippedByLimit = 0;
 	// limit 到達の warn は 1 回だけ出す。target ごとに出すと同じ警告が大量に並んでノイズになる。
@@ -72,9 +86,10 @@ export async function run(options: RunOptions): Promise<RunSummary> {
 					]);
 					matchResult = findScanTargets(org, githubRepos, mendRepos);
 				} catch (err) {
-					if (err instanceof MendAuthError) {
-						// セッションが壊れている = 残りの org を処理しても全滅が確定している。
-						// 無駄な GitHub API 呼び出しを避けるため、ここまでのログを残したまま再 throw する。
+					if (err instanceof MendAuthError || err instanceof MendUiError) {
+						// MendAuthError: セッションが壊れている = 残りの org を処理しても全滅が確定している。
+						// MendUiError: 内部 API の構造変更 = 他の org でも同様に失敗すると見込まれる。
+						// どちらも無駄な API 呼び出しを避けるため、ここまでのログを残したまま再 throw する。
 						throw err;
 					}
 					// GithubApiError や Mend 一覧取得の失敗など。org 名のタイポ 1 つで
@@ -141,11 +156,21 @@ export async function run(options: RunOptions): Promise<RunSummary> {
 					}
 
 					// triggerScan は自動リトライしない（同一 scan の二重トリガーを避けるため）。
-					// MendAuthError はここで捕まえず、そのまま呼び出し元へ伝播させる
+					// MendAuthError / MendUiError はここで捕まえず、そのまま呼び出し元へ伝播させる
 					// （＝この時点までの成功/失敗ログは既に出力済みの状態で中断する）。
+					// 2 件目以降は待機を挟み、Mend 側のレート制限・過負荷を避ける。
+					if (triggerIntervalMs > 0 && results.length > 0) {
+						await sleep(triggerIntervalMs);
+					}
 					const result = await mendClient.triggerScan(org, target.mendRepoName);
 					results.push(result);
-					if (result.ok) {
+					if (result.ok && result.alreadyQueued) {
+						alreadyQueuedCount++;
+						logger.info("ジョブは既にキューにあるためスキップしました", {
+							org,
+							mendRepoName: target.mendRepoName,
+						});
+					} else if (result.ok) {
 						triggeredCount++;
 						logger.info("scan をトリガーしました", {
 							org,
@@ -170,6 +195,7 @@ export async function run(options: RunOptions): Promise<RunSummary> {
 		targetCount,
 		executedCount: results.length,
 		triggeredCount,
+		alreadyQueuedCount,
 		failedCount,
 		skippedByLimit,
 	});
@@ -178,6 +204,7 @@ export async function run(options: RunOptions): Promise<RunSummary> {
 		results,
 		targetCount,
 		triggeredCount,
+		alreadyQueuedCount,
 		failedCount,
 		skippedByLimit,
 		orgErrors,

@@ -1,5 +1,5 @@
 /**
- * cookiejar から取得した Cookie。Playwright の Cookie 型と同じ構造。
+ * cookiejar から取得した Cookie。ブラウザの Cookie 型と同じ構造。
  */
 export interface Cookie {
 	readonly name: string;
@@ -40,7 +40,14 @@ export interface MendRepo {
  * {@link MendAuthError} を throw する、という 2 段構えが終了コード設計の土台になっている。
  */
 export type MendTriggerResult =
-	| { readonly ok: true }
+	| {
+			readonly ok: true;
+			/**
+			 * 409 Conflict（ジョブが既にキューにある）だった場合に true。
+			 * 前回の実行などで既にトリガー済みという意味なので、新規トリガーとは区別して数える。
+			 */
+			readonly alreadyQueued?: boolean;
+	  }
 	| { readonly ok: false; readonly reason: string };
 
 /**
@@ -52,7 +59,24 @@ export class MendAuthError extends Error {
 }
 
 /**
- * Mend UI の構造が想定と変わっており操作を続行できない。
+ * Mend の内部 API が 401/403 以外のエラーステータスを返した。
+ * リポジトリ・org 単位の失敗なので、呼び出し側は処理を継続する（fatal にしない）。
+ * 診断のため、レスポンスボディの先頭を bodyPreview に保持する。
+ */
+export class MendApiError extends Error {
+	override readonly name = "MendApiError";
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly bodyPreview: string,
+	) {
+		super(message);
+	}
+}
+
+/**
+ * Mend の内部 API が成功を返したものの、レスポンスの構造が想定と異なる。
+ * 内部 API の構造変更を意味し、他のリポジトリ・org でも同様に失敗すると見込まれるため
  * リトライしても直らないので fail fast させる。
  */
 export class MendUiError extends Error {

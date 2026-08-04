@@ -68,7 +68,7 @@ export function describeFatalError(err: unknown): {
 		return {
 			code: EXIT_CODES.fatal,
 			message,
-			hint: "Mend の UI 構造が変わった可能性があります。bun run observe で再調査してください。",
+			hint: "Mend の内部 API の構造が変わった可能性があります。bun run observe で再調査してください。",
 		};
 	}
 	if (name === "ConfigError") {

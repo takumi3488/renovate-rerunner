@@ -14,6 +14,7 @@ import { decideExitCode, describeFatalError, EXIT_CODES } from "./errors";
 import { createGithubClient } from "./github";
 import { createLogger } from "./logger";
 import { createMendClient } from "./mend/client";
+import { loadMendConfig } from "./mend/config";
 import type { Notifier } from "./notify/discord";
 import { createNotifier, loadWebhookUrl } from "./notify/discord";
 import { run } from "./orchestrator";
@@ -122,9 +123,11 @@ async function main(rootSpan: Span, telemetry: Telemetry): Promise<number> {
 			logger,
 		});
 		// AsyncDisposable なので、この後の処理で例外が飛んでもブラウザは必ず閉じる
+		const mendConfig = loadMendConfig();
 		await using mendClient = await createMendClient({
 			logger,
 			cookiejar: cookiejarClient,
+			config: mendConfig,
 		});
 
 		const summary = await run({
@@ -134,10 +137,12 @@ async function main(rootSpan: Span, telemetry: Telemetry): Promise<number> {
 			logger,
 			dryRun: options.dryRun,
 			limit: options.limit,
+			triggerIntervalMs: mendConfig.triggerIntervalMs,
 		});
 		rootSpan.setAttributes({
 			"rerunner.target_count": summary.targetCount,
 			"rerunner.triggered_count": summary.triggeredCount,
+			"rerunner.already_queued_count": summary.alreadyQueuedCount,
 			"rerunner.failed_count": summary.failedCount,
 			"rerunner.skipped_by_limit": summary.skippedByLimit,
 			"rerunner.org_error_count": summary.orgErrors.length,
