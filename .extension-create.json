@@ -1,5 +1,5 @@
 {
-  "createdWith": "extension-create@4.0.32",
-  "template": "javascript",
-  "source": "bundled"
+	"createdWith": "extension-create@4.0.32",
+	"template": "javascript",
+	"source": "bundled"
 }

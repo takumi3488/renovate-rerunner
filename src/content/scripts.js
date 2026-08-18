@@ -1,7 +1,5 @@
-import createContentApp from './ContentApp.js'
-import './styles.css'
-
-console.log('[From the page context] Hello from content_scripts!')
+import createContentApp from "./ContentApp.js";
+import "./styles.css";
 
 /**
  * Extension.js content_script entrypoint. The framework calls this on
@@ -9,36 +7,36 @@ console.log('[From the page context] Hello from content_scripts!')
  * Do not invoke it yourself.
  */
 export default function initial() {
-  const rootDiv = document.createElement('div')
-  rootDiv.setAttribute('data-extension-root', 'true')
-  // Isolate the host from page styles (e.g. example.com ships div{opacity:.8},
-  // which would otherwise fade the whole widget): the shadow DOM only protects
-  // descendants; the host element itself still takes page CSS.
-  rootDiv.style.cssText = 'all: initial !important'
-  document.body.appendChild(rootDiv)
+	const rootDiv = document.createElement("div");
+	rootDiv.setAttribute("data-extension-root", "true");
+	// Isolate the host from page styles (e.g. example.com ships div{opacity:.8},
+	// which would otherwise fade the whole widget): the shadow DOM only protects
+	// descendants; the host element itself still takes page CSS.
+	rootDiv.style.cssText = "all: initial !important";
+	document.body.appendChild(rootDiv);
 
-  // Injecting content_scripts inside a shadow dom
-  // prevents conflicts with the host page's styles.
-  // This way, styles from the extension won't leak into the host page.
-  const shadowRoot = rootDiv.attachShadow({mode: 'open'})
+	// Injecting content_scripts inside a shadow dom
+	// prevents conflicts with the host page's styles.
+	// This way, styles from the extension won't leak into the host page.
+	const shadowRoot = rootDiv.attachShadow({ mode: "open" });
 
-  const styleElement = document.createElement('style')
-  shadowRoot.appendChild(styleElement)
+	const styleElement = document.createElement("style");
+	shadowRoot.appendChild(styleElement);
 
-  fetchCSS().then((response) => (styleElement.textContent = response))
+	fetchCSS().then((response) => (styleElement.textContent = response));
 
-  // Render ContentApp inside shadow root
-  const container = createContentApp()
-  shadowRoot.appendChild(container)
+	// Render ContentApp inside shadow root
+	const container = createContentApp();
+	shadowRoot.appendChild(container);
 
-  return () => {
-    rootDiv.remove()
-  }
+	return () => {
+		rootDiv.remove();
+	};
 }
 
 async function fetchCSS() {
-  const cssUrl = new URL('./styles.css', import.meta.url)
-  const response = await fetch(cssUrl)
-  const text = await response.text()
-  return response.ok ? text : Promise.reject(text)
+	const cssUrl = new URL("./styles.css", import.meta.url);
+	const response = await fetch(cssUrl);
+	const text = await response.text();
+	return response.ok ? text : Promise.reject(text);
 }

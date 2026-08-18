@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScanWidget harness</title>
+    <link rel="stylesheet" href="../src/content/styles.css" />
+  </head>
+  <body>
+    <script type="module">
+      import createScanWidget from "../src/content/ScanWidget.js";
+
+      const orgs = [
+        { platform: "github", slug: "org-a", label: "Org A" },
+        { platform: "github", slug: "org-b", label: "Org B" },
+      ];
+
+      let scanCount = 0;
+
+      const widget = createScanWidget({
+        currentOrg: { platform: "github", org: "org-a" },
+        listOrgs: async () => orgs,
+        listDisabledRepos: async () => ({
+          repos: [{ name: "repo-1" }, { name: "repo-2" }, { name: "repo-dead" }],
+          unknownStatuses: [],
+        }),
+        listAliveRepoNames: async () => ({ ok: true, repos: ["repo-1", "repo-2"] }),
+        triggerScan: async () => {
+          scanCount++;
+          return scanCount === 1
+            ? { ok: true }
+            : { ok: true, alreadyQueued: true };
+        },
+        openSettings: () => {},
+        sleep: () => Promise.resolve(),
+      });
+
+      document.body.appendChild(widget);
+    </script>
+  </body>
+</html>

@@ -1,60 +1,77 @@
-/* @import 'sakura.css'; */
-
 :root {
-  --sidebar-margin: 1rem;
-  --sidebar-bg: #0a0c10;
-  --sidebar-text: #c9c9c9;
-  --sidebar-link: #e5e7eb;
-  --sidebar-border: #c9c9c9;
+	--sidebar-margin: 1rem;
+	--sidebar-bg: #0a0c10;
+	--sidebar-text: #c9c9c9;
+	--sidebar-link: #e5e7eb;
+	--sidebar-border: #c9c9c9;
 }
 
 body {
-  background-color: var(--sidebar-bg);
-  color: var(--sidebar-text);
-  height: 100vh;
-  margin: var(--sidebar-margin);
-  border-radius: 6px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
+	background-color: var(--sidebar-bg);
+	color: var(--sidebar-text);
+	height: 100vh;
+	margin: var(--sidebar-margin);
+	border-radius: 6px;
+	font-family:
+		-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+		Arial, "Noto Sans", sans-serif;
 }
 
-.sidebar_app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 1rem;
-  text-align: center;
-  max-height: 100vh;
-  overflow-y: auto;
+.settings_form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 0 1rem;
+	max-width: 320px;
 }
 
-.sidebar_logo {
-  width: 72px;
-  margin: 0 auto 1rem;
+.settings_form > label {
+	font-size: 0.85rem;
+	font-weight: 600;
 }
 
-.sidebar_title {
-  font-size: 1.85em;
-  line-height: 1.1;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, "Noto Sans", sans-serif;
-  font-weight: 700;
-  margin: 0;
-  text-align: center;
+.settings_form input[type="password"] {
+	background: #11151c;
+	color: var(--sidebar-text);
+	border: 1px solid #2a2f3a;
+	border-radius: 6px;
+	padding: 0.5rem;
+	font-size: 0.85rem;
 }
 
-.sidebar_description {
-  font-size: small;
-  margin: 0.5rem 0 0;
-  text-align: center;
+.settings_form label:has(input[type="checkbox"]) {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	font-weight: 400;
 }
 
-.sidebar_description a {
-  text-decoration: none;
-  border-bottom: 2px solid var(--sidebar-border);
-  color: var(--sidebar-link);
-  margin: 0;
+.settings_hint {
+	font-size: 0.75rem;
+	color: #8b93a1;
+	margin: 0;
+}
+
+.settings_save,
+.settings_clear {
+	appearance: none;
+	border: 1px solid var(--sidebar-border);
+	border-radius: 6px;
+	padding: 0.4rem 0.9rem;
+	font-size: 0.85rem;
+	cursor: pointer;
+	background: var(--sidebar-link);
+	color: var(--sidebar-bg);
+}
+
+.settings_clear {
+	background: transparent;
+	color: var(--sidebar-text);
+}
+
+.settings_status {
+	font-size: 0.8rem;
+	color: #4ade80;
+	margin: 0;
+	min-height: 1em;
 }

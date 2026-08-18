@@ -1,44 +1,78 @@
-console.log(
-  '[From the background context] Hello from the background worker/script!'
-)
+import { listAliveRepoNames } from "./github/client.js";
+import { ext } from "./shared/runtime.js";
 
-const isFirefoxLike =
-  import.meta.env.EXTENSION_PUBLIC_BROWSER === 'firefox' ||
-  import.meta.env.EXTENSION_PUBLIC_BROWSER === 'gecko-based'
+function openSidebar() {
+	if (ext.sidebarAction?.open) {
+		// Firefox 経路
+		ext.sidebarAction.open();
+		return;
+	}
 
-if (isFirefoxLike) {
-  browser.browserAction.onClicked.addListener(() => {
-    browser.sidebarAction.open()
-  })
+	if (!ext.sidePanel) return;
+	if (!ext.sidePanel.open) return;
 
-  browser.runtime.onMessage.addListener((message) => {
-    if (!message || message.type !== 'openSidebar') return
+	ext.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+		const activeTabId = tabs?.[0]?.id;
+		if (!activeTabId) return;
 
-    browser.sidebarAction.open()
-  })
+		try {
+			ext.sidePanel.open({ tabId: activeTabId });
+		} catch (error) {
+			console.error(error);
+		}
+	});
 }
 
-if (!isFirefoxLike) {
-  // setPanelBehavior only affects FUTURE action clicks, registering it
-  // inside onClicked would swallow the first toolbar click.
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true})
+async function resolveAliveRepos(org) {
+	const { githubToken, excludeForks = true } = await ext.storage.local.get([
+		"githubToken",
+		"excludeForks",
+	]);
+
+	if (!githubToken) {
+		return {
+			ok: false,
+			code: "no-token",
+			error: "GitHub token が未設定です。拡張の設定で保存してください。",
+		};
+	}
+
+	try {
+		const repos = await listAliveRepoNames({
+			org,
+			token: githubToken,
+			excludeForks,
+		});
+		return { ok: true, repos };
+	} catch (error) {
+		// トークン本体は絶対にレスポンスに含めない。
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, error: message };
+	}
 }
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (!message || message.type !== 'openSidebar') return
+if (ext.sidePanel) {
+	// setPanelBehavior only affects FUTURE action clicks, registering it
+	// inside onClicked would swallow the first toolbar click.
+	ext.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+}
 
-  chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true})
+const browserAction = ext.browserAction ?? ext.action;
+if (ext.sidebarAction && browserAction) {
+	browserAction.onClicked.addListener(() => {
+		ext.sidebarAction.open();
+	});
+}
 
-  if (!chrome.sidePanel.open) return
-
-  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    const activeTabId = tabs?.[0]?.id
-    if (!activeTabId) return
-
-    try {
-      chrome.sidePanel.open({tabId: activeTabId})
-    } catch (error) {
-      console.error(error)
-    }
-  })
-})
+ext.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+	if (message?.type === "openSidebar") {
+		openSidebar();
+		return;
+	}
+	if (message?.type === "githubAliveRepos") {
+		resolveAliveRepos(message.org).then(sendResponse);
+		// Chrome MV3 はリスナーの戻り値 Promise を解釈しないので
+		// sendResponse + return true で非同期応答にする。
+		return true;
+	}
+});

@@ -1,41 +1,17 @@
-import logo from '../images/icon.png'
+import { createMendApi } from "../mend/api.js";
+import { parseMendLocation } from "../mend/location.js";
+import { ext } from "../shared/runtime.js";
+import createScanWidget from "./ScanWidget.js";
 
 export default function createContentApp() {
-  const container = document.createElement('div')
-  container.className = 'content_script'
-
-  const pill = document.createElement('button')
-  pill.type = 'button'
-  pill.className = 'content_pill'
-  pill.setAttribute('aria-label', 'Open sidebar')
-  pill.addEventListener('click', () => {
-    try {
-      if (
-        import.meta.env.EXTENSION_PUBLIC_BROWSER === 'firefox' ||
-        import.meta.env.EXTENSION_PUBLIC_BROWSER === 'gecko-based'
-      ) {
-        browser.runtime.sendMessage({type: 'openSidebar'})
-      } else {
-        chrome.runtime.sendMessage({type: 'openSidebar'})
-      }
-    } catch (error) {
-      console.error(error)
-    }
-  })
-
-  const img = document.createElement('img')
-  img.className = 'content_pill_logo'
-  img.src = logo
-  img.alt = ''
-  img.setAttribute('aria-hidden', 'true')
-
-  const text = document.createElement('span')
-  text.className = 'content_pill_text'
-  text.textContent = 'Open sidebar'
-
-  pill.appendChild(img)
-  pill.appendChild(text)
-  container.appendChild(pill)
-
-  return container
+	const api = createMendApi({ origin: location.origin });
+	return createScanWidget({
+		currentOrg: parseMendLocation(location.pathname),
+		listOrgs: () => api.listOrgs(),
+		listDisabledRepos: (input) => api.listDisabledRepos(input),
+		triggerScan: (target) => api.triggerScan(target),
+		listAliveRepoNames: (org) =>
+			ext.runtime.sendMessage({ type: "githubAliveRepos", org }),
+		openSettings: () => ext.runtime.sendMessage({ type: "openSidebar" }),
+	});
 }
