@@ -6,7 +6,7 @@
       "name": "renovate-rerunner",
       "devDependencies": {
         "@biomejs/biome": "2.5.13",
-        "extension": "4.1.18",
+        "extension": "4.1.19",
         "oxlint": "1.83.0",
       },
     },
@@ -248,13 +248,23 @@
 
     "@tybys/wasm-util": ["@tybys/wasm-util@0.10.4", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A=="],
 
+    "@types/chrome": ["@types/chrome@0.3.0", "", { "dependencies": { "@types/filesystem": "*", "@types/har-format": "*" } }, "sha512-HPAMKyJwUnNJdVsxgypwvIStlwRhhaLnxgEwKIB99oOcffJrC4UMeD5xseVoBwDinSkr690DCBaAtSYdK6M1qw=="],
+
     "@types/estree": ["@types/estree@1.0.9", "", {}, "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="],
+
+    "@types/filesystem": ["@types/filesystem@0.0.36", "", { "dependencies": { "@types/filewriter": "*" } }, "sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA=="],
+
+    "@types/filewriter": ["@types/filewriter@0.0.33", "", {}, "sha512-xFU8ZXTw4gd358lb2jw25nxY9QAgqn2+bKKjKOYfNCzN4DKCFetK7sPtrlpg66Ywe3vWY9FNxprZawAh9wfJ3g=="],
+
+    "@types/har-format": ["@types/har-format@1.2.16", "", {}, "sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A=="],
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
     "@types/less": ["@types/less@3.0.8", "", {}, "sha512-Gjm4+H9noDJgu5EdT3rUw5MhPBag46fiOy27BefvWkNL8mlZnKnCaVVVTLKj6RYXed9b62CPKnPav9govyQDzA=="],
 
     "@types/node": ["@types/node@22.20.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-DZmzkmwHzXrLPAXPyKNDzlIwMMUZCVacoD25ywdy5YTKGbOx/2ld+Q38Im2zJ0vBuZP5Prd3VZutKZyXwkOS8A=="],
+
+    "@types/webextension-polyfill": ["@types/webextension-polyfill@0.12.6", "", {}, "sha512-XTNQSGiQaipt1iocbpHSjYHd+Ujcya+K5H4H2uH7JwycReTFixoYqGWIKih2Ec072NuEW2lAyXRDYmlEx00+cw=="],
 
     "@vue/compiler-core": ["@vue/compiler-core@3.5.26", "", { "dependencies": { "@babel/parser": "^7.28.5", "@vue/shared": "3.5.26", "entities": "^7.0.0", "estree-walker": "^2.0.2", "source-map-js": "^1.2.1" } }, "sha512-vXyI5GMfuoBCnv5ucIT7jhHKl55Y477yxP6fc4eUswjP8FG3FFVFd41eNDArR+Uk3QKn2Z85NavjaxLxOC19/w=="],
 
@@ -338,7 +348,7 @@
 
     "brave-location": ["brave-location@3.1.1", "", { "dependencies": { "which": "^6.0.1" }, "bin": { "brave-location": "bin.cjs" } }, "sha512-HEmKZ7N2jbZVYqetfcWmSoZYNgo+6i0NsCX0MG+s7tl80yaJPKtpXHzFWsmsyRHq4gGErFysOCcvobNeE4zs/w=="],
 
-    "browser-extension-manifest-fields": ["browser-extension-manifest-fields@2.3.1", "", {}, "sha512-CBerXGTItB5W2imnXV1jdXuJnEQwtFpwmNQpvSjcFES9Fc0l0guaj8h5CO6TJq29FoYt/v8mrDQ1+FIqe3TOAQ=="],
+    "browser-extension-manifest-fields": ["browser-extension-manifest-fields@3.0.1", "", {}, "sha512-UxAtcWYTUavqrJOcMIc/YmE9HD9agV3Q9Cue5e6pdIgPPru5A/syPsIw2SYqnULiLhJsGxyYh9e+VE717GbuAw=="],
 
     "browserslist": ["browserslist@4.29.0", "", { "dependencies": { "baseline-browser-mapping": "^2.11.23", "caniuse-lite": "^1.0.30001810", "electron-to-chromium": "^1.5.427", "node-releases": "^2.0.55", "update-browserslist-db": "^1.3.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-3GSvyjvDI4Dur1Meg2BekJquu5uF+9R9a1+5M1Mde192eZoXbeXjzgOsgqPS2V8D5wrrip0gR5Hf/GhWQ9ZzaA=="],
 
@@ -440,15 +450,15 @@
 
     "events": ["events@3.3.0", "", {}, "sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q=="],
 
-    "extension": ["extension@4.1.18", "", { "dependencies": { "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chromium-location": "2.1.2", "commander": "^15.0.0", "cross-spawn": "^7.0.6", "edge-location": "2.3.1", "extension-create": "4.1.18", "extension-develop": "4.1.18", "extension-install": "4.1.18", "firefox-location2": "3.1.1", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-hMvrH8fUqDGkk3Z7NW8RbJrS/7nc3OEdwYIS9k3DT5uEfmsqt37MhsO3sjaaJ5qgd4ZKj5U6lxByuNbcCdsYDw=="],
+    "extension": ["extension@4.1.19", "", { "dependencies": { "@types/chrome": "*", "@types/node": "*", "@types/webextension-polyfill": "*", "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chromium-location": "2.1.2", "commander": "^15.0.0", "cross-spawn": "^7.0.6", "edge-location": "2.3.1", "extension-create": "4.1.19", "extension-develop": "4.1.19", "extension-install": "4.1.19", "firefox-location2": "3.1.1", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-Zzufp61Zen0lnhk3eJyQfKINwhWG7ZPdzzXaD78Aq8nCcVoAp3sF/hZ77DiqwqF9gJZHDKtTiNta28JfyBp7pQ=="],
 
-    "extension-create": ["extension-create@4.1.18", "", { "dependencies": { "axios": "^1.18.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-hFiZ68O9smFTbshKBlKQi2oiMvjpbFx8Zz//REyIGY1E8BHNlpfmgapMZK+LcjSJOZxUvB7Gdlm4fN4cQC+ewA=="],
+    "extension-create": ["extension-create@4.1.19", "", { "dependencies": { "axios": "^1.18.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-5C6qyUrcjlF1WzkSiiX3zI8wiVQbb5FqA4w3YVd9bARfB2rh/JD/7RaFSzSgWIpad1yd1vdFYflxKJS/EncpJA=="],
 
-    "extension-develop": ["extension-develop@4.1.18", "", { "dependencies": { "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "^2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.26", "acorn": "^8.16.0", "browser-extension-manifest-fields": "^2.3.1", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^17.2.3", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.6.7", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "10.27.3", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.26", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-t+bdAZt8GNdBNHSkzj2Gsw7aIZT/IELrsu9cmaxZQg6EdNeW2G/FHE4TveIPApSs9bNdRTn58BfwxEzzi2xLGQ=="],
+    "extension-develop": ["extension-develop@4.1.19", "", { "dependencies": { "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "^2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.26", "acorn": "^8.16.0", "browser-extension-manifest-fields": "^3.0.1", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^17.2.3", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.6.7", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "10.27.3", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.26", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-m9F7P6DzSQPmhmL3U01iaRBiziVyaGtazYDl61GlFsgsmw/QqfNYKEVSAfYk2YgskKzlYc2bAxvkPt4DBQdBZg=="],
 
     "extension-from-store": ["extension-from-store@0.2.5", "", { "dependencies": { "fflate": "^0.8.3" }, "bin": { "extension-from-store": "bin.cjs" } }, "sha512-Bu2zR1rLpA5l6GBEiORttEdIR0AIjC64yVM+8J07FAWais2xfx6DftMbroZyzLppdygbT3DmTrclTZvY9AdESg=="],
 
-    "extension-install": ["extension-install@4.1.18", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-Lr5oL0LOmFSYFRhxXvtVovv22HJi1dXhuY0T11TLM3KD39cYJiBvgO2b3kBLoUjKNAzZ7v5A05Qm+VlLKh3RPg=="],
+    "extension-install": ["extension-install@4.1.19", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-Zlp/AlIhl+LlsdLh/AQaHFlT5mY2jnfSuKvKpw+V1hI4dEaqizf3q2UtE5fuLwqWZFnA+q3d3reARGCmjnvD0Q=="],
 
     "fast-deep-equal": ["fast-deep-equal@3.1.3", "", {}, "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q=="],
 
