@@ -6,7 +6,7 @@
       "name": "renovate-rerunner",
       "devDependencies": {
         "@biomejs/biome": "2.5.14",
-        "extension": "4.1.26",
+        "extension": "4.1.27",
         "oxlint": "1.85.0",
       },
     },
@@ -348,7 +348,7 @@
 
     "brave-location": ["brave-location@3.1.1", "", { "dependencies": { "which": "^6.0.1" }, "bin": { "brave-location": "bin.cjs" } }, "sha512-HEmKZ7N2jbZVYqetfcWmSoZYNgo+6i0NsCX0MG+s7tl80yaJPKtpXHzFWsmsyRHq4gGErFysOCcvobNeE4zs/w=="],
 
-    "browser-extension-manifest-fields": ["browser-extension-manifest-fields@3.0.1", "", {}, "sha512-UxAtcWYTUavqrJOcMIc/YmE9HD9agV3Q9Cue5e6pdIgPPru5A/syPsIw2SYqnULiLhJsGxyYh9e+VE717GbuAw=="],
+    "browser-extension-manifest-fields": ["browser-extension-manifest-fields@3.0.2", "", {}, "sha512-oPF3ph5oRKehC55Sady0A3Oe6LJJTll4LtSwUQDkiIYM1Y0sCA1hudDsYTuqxXI1i4K1V7MqFuj3K2xq2ZwGHw=="],
 
     "browserslist": ["browserslist@4.29.0", "", { "dependencies": { "baseline-browser-mapping": "^2.11.23", "caniuse-lite": "^1.0.30001810", "electron-to-chromium": "^1.5.427", "node-releases": "^2.0.55", "update-browserslist-db": "^1.3.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-3GSvyjvDI4Dur1Meg2BekJquu5uF+9R9a1+5M1Mde192eZoXbeXjzgOsgqPS2V8D5wrrip0gR5Hf/GhWQ9ZzaA=="],
 
@@ -410,7 +410,7 @@
 
     "devalue": ["devalue@5.9.4", "", {}, "sha512-sPAT4pztbu6586/hrhOnMKS17IJrvg12mXiSPSS3W5qDeN2RGgvZ0diZCm31dBbnevfVmujNO3IM2wrS4Y2Rhg=="],
 
-    "dotenv": ["dotenv@17.4.2", "", {}, "sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw=="],
+    "dotenv": ["dotenv@18.0.4", "", { "bin": { "dotenv": "dist/index.cjs" } }, "sha512-jGt9uI5BIxpVO15kvy+iEFqNAwxYClKWnkptLjSNPnFLC003Imd0ofr3aEVsbpHdSBdSsbcApNIlz4nbyGMwdA=="],
 
     "dunder-proto": ["dunder-proto@1.0.1", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A=="],
 
@@ -450,15 +450,15 @@
 
     "events": ["events@3.3.0", "", {}, "sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q=="],
 
-    "extension": ["extension@4.1.26", "", { "dependencies": { "@types/chrome": "*", "@types/node": "*", "@types/webextension-polyfill": "*", "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chromium-location": "2.1.2", "commander": "^15.0.0", "edge-location": "2.3.1", "extension-create": "4.1.26", "extension-develop": "4.1.26", "extension-install": "4.1.26", "firefox-location2": "3.1.1", "floorp-location": "1.0.0", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1", "zen-location": "1.0.0" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-P/O9IGFQW+0GFct/akBbzTG+DSFr6VB0eGqc9Iqyj9ijbcXI0XVwIIfWoWBS/wR8iichHtaUi/GCvAtbAK9rXw=="],
+    "extension": ["extension@4.1.27", "", { "dependencies": { "@types/chrome": "*", "@types/node": "*", "@types/webextension-polyfill": "*", "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chromium-location": "2.1.2", "commander": "^15.0.0", "edge-location": "2.3.1", "extension-create": "4.1.27", "extension-develop": "4.1.27", "extension-install": "4.1.27", "firefox-location2": "3.1.1", "floorp-location": "1.0.0", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1", "zen-location": "1.0.0" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-GsWD5ck/MI/R9l8qU8drO5k6gHnRaNovVejepYGEdP3HmroDaeEs1EirUuNlg1vKlOv1YEn+07fxYu3B2CqE5w=="],
 
-    "extension-create": ["extension-create@4.1.26", "", { "dependencies": { "axios": "^1.18.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-IF/U9HbKhbGI+S5UIZ777ZeVTvOk9RLF9WIZyx/LYuNf+cV35pB7QLuTlKPE6VatcHOEi8nWgAzP//26BxTIhA=="],
+    "extension-create": ["extension-create@4.1.27", "", { "dependencies": { "axios": "^1.18.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-k0rffuNdEvpv33Qavdq3Lr3Ni0LyIxTo5TWnbBlgmw/Ga5w0dOFCj4brFlOZ25vo6Dkg8mVjHCeZ3EEQlVJtWw=="],
 
-    "extension-develop": ["extension-develop@4.1.26", "", { "dependencies": { "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.26", "acorn": "^8.16.0", "browser-extension-manifest-fields": "^3.0.1", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^17.2.3", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.9.1", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "10.27.3", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.26", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-B71esvjvCR+lwIZ+27g+jTaKvKtvhxsNmVjU2TAh19rGVEYCbJOoKjYIx40hFtoew0xLEV6VJzrpCXgEQpp5QQ=="],
+    "extension-develop": ["extension-develop@4.1.27", "", { "dependencies": { "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.26", "acorn": "^8.16.0", "browser-extension-manifest-fields": "^3.0.2", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^18.0.0", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.9.1", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "10.27.3", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.26", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-bZeeHu2CecNn28vySBP83fGt8sch7wqbXM0IOCaj1aqV4qUbs3p6TuddGWy2rlPsxuXqCSL4mBNagbqk0wpwUA=="],
 
     "extension-from-store": ["extension-from-store@0.2.5", "", { "dependencies": { "fflate": "^0.8.3" }, "bin": { "extension-from-store": "bin.cjs" } }, "sha512-Bu2zR1rLpA5l6GBEiORttEdIR0AIjC64yVM+8J07FAWais2xfx6DftMbroZyzLppdygbT3DmTrclTZvY9AdESg=="],
 
-    "extension-install": ["extension-install@4.1.26", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-eVp3CQU9+kSCWkSWDwrSbsXrq6RjYOa1xifmezymLEZu1CZC2uKoXPL6+iFvDWM/s3uBPgkfCsSe9cNq0+9Hcw=="],
+    "extension-install": ["extension-install@4.1.27", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-G9YlrwfB/abpB14w/P99a60ux6xP486+ltZPorPjQZQFloXlQvmWaXmQf1HStGNI95QaroJAYCy41PkdXPoXnA=="],
 
     "fast-deep-equal": ["fast-deep-equal@3.1.3", "", {}, "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q=="],
 
