@@ -20,9 +20,9 @@
 		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.6.5",
-		"extension": "4.1.38",
-		"oxlint": "1.91.0"
+		"@biomejs/biome": "2.6.6",
+		"extension": "4.1.39",
+		"oxlint": "1.92.0"
 	},
 	"packageManager": "bun@1.4.4"
 }
