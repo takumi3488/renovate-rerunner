@@ -6,7 +6,7 @@
       "name": "renovate-rerunner",
       "devDependencies": {
         "@biomejs/biome": "2.6.8",
-        "extension": "4.1.39",
+        "extension": "4.1.40",
         "oxlint": "1.93.0",
       },
     },
@@ -300,11 +300,7 @@
 
     "@tybys/wasm-util": ["@tybys/wasm-util@0.10.4", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A=="],
 
-    "@types/chrome": ["@types/chrome@0.3.7", "", { "dependencies": { "@types/har-format": "*" } }, "sha512-jWZgbHqWbTL1a5+PoyN0OJutNyejWgyZ5MdcvKo6iJE1TNRtXR3FxsC4WzNl52yZWPidfWC8NV/VUNZf+OFKcA=="],
-
     "@types/estree": ["@types/estree@1.0.10", "", {}, "sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g=="],
-
-    "@types/har-format": ["@types/har-format@1.2.16", "", {}, "sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A=="],
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
@@ -422,6 +418,8 @@
 
     "chrome-trace-event": ["chrome-trace-event@1.0.4", "", {}, "sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ=="],
 
+    "chrome-types": ["chrome-types@0.1.464", "", {}, "sha512-mDNDBJBLVf1nqAKWV6PJf17a81h62U/77+TDSpGnYap5qaROc0r92Rxdgy02Dmjn4J/SpB/tOVNvzh7h/TEAeA=="],
+
     "chromium-location": ["chromium-location@2.1.2", "", { "dependencies": { "userhome": "^1.0.1", "which": "^6.0.1" }, "bin": { "chromium-location": "bin.cjs" } }, "sha512-VE+2TFWsP+SikfogHj516ptohdB2+ZDU3eXlmq93PLGpaV4admAwUvN3221Ezxn3Ew2VRmtiLkJT0pxAe476KA=="],
 
     "clone-deep": ["clone-deep@4.0.1", "", { "dependencies": { "is-plain-object": "^2.0.4", "kind-of": "^6.0.2", "shallow-clone": "^3.0.0" } }, "sha512-neHB9xuzh/wk0dIHweyAXv2aPGZIVk3pLMe+/RNzINf17fe0OG96QroktYAUm7SM1PBnzTabaLboqqxDyMU+SQ=="],
@@ -504,15 +502,15 @@
 
     "events": ["events@3.3.0", "", {}, "sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q=="],
 
-    "extension": ["extension@4.1.39", "", { "dependencies": { "@types/chrome": "*", "@types/node": "*", "@types/webextension-polyfill": "*", "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chromium-location": "2.1.2", "commander": "^15.0.0", "edge-location": "2.3.1", "extension-create": "4.1.39", "extension-develop": "4.1.39", "extension-install": "4.1.39", "firefox-location2": "3.2.0", "floorp-location": "1.0.0", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1", "zen-location": "1.0.0" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-mSFz8oWZnKMNJFA7O+4R+cc0I+1mK/wVRHOU35O/Nxh6v7S448V7XhW59R6MGz1wa33dYyjJwcweM92VkiH8Aw=="],
+    "extension": ["extension@4.1.40", "", { "dependencies": { "@types/node": "*", "@types/webextension-polyfill": "*", "brave-location": "3.1.1", "chrome-location2": "4.1.1", "chrome-types": ">=0.1.460", "chromium-location": "2.1.2", "commander": "^15.0.0", "edge-location": "2.3.1", "extension-create": "4.1.40", "extension-develop": "4.1.40", "extension-install": "4.1.40", "firefox-location2": "3.2.0", "floorp-location": "1.0.0", "librewolf-location": "1.2.1", "opera-location2": "2.1.1", "pintor": "0.3.0", "semver": "^7.7.3", "unique-names-generator": "^4.7.1", "update-check": "^1.5.4", "vivaldi-location2": "2.1.1", "waterfox-location": "2.1.1", "ws": "^8.20.1", "wsl-support": "0.1.0", "yandex-location": "2.1.1", "zen-location": "1.0.0" }, "bin": { "extension": "bin/extension.cjs" } }, "sha512-D7Ekli5hsHF7ZXqWtVMNx/zO0u+YXpxI4GqbZgrAqlmKqS+vO+a8886mytLAWfNMFBg1au4d60C6zAj3HoStaA=="],
 
-    "extension-create": ["extension-create@4.1.39", "", { "dependencies": { "axios": "^1.20.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-Mu/CWuW4xJ0RtaWGbrpeC7L1NZODhgc10X4oNYrH4KoCf1fE9HuNRjBWcYPsbA6RejXshNqZ5pXvnV3kriuHEw=="],
+    "extension-create": ["extension-create@4.1.40", "", { "dependencies": { "axios": "^1.20.0", "cross-spawn": "^7.0.6", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "pintor": "0.3.0", "prefers-yarn": "2.0.1" } }, "sha512-lID19VqHOBi/OzvFVWxlsMG3mEBTWuOsf/OhK9UkOvaLvJj0vTFHc27h9Ow1iJldLdAkklGzuPrYNV8WwHJ7cA=="],
 
-    "extension-develop": ["extension-develop@4.1.39", "", { "dependencies": { "@babel/core": "7.29.7", "@babel/preset-typescript": "7.29.7", "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.43", "acorn": "^8.16.0", "babel-loader": "10.1.1", "babel-preset-solid": "1.9.15", "browser-extension-manifest-fields": "^3.0.2", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^18.0.0", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.9.1", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "11.0.0", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.43", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-C0pJuYRwUXBeJvhg01uyhBDbysnJlJHaV3bfg3d4Ephw92YmX0vkmK8Szv6tr2bJan6M1GzLg66tNFzG1aNibg=="],
+    "extension-develop": ["extension-develop@4.1.40", "", { "dependencies": { "@babel/core": "7.29.7", "@babel/preset-typescript": "7.29.7", "@prefresh/core": "1.5.9", "@prefresh/utils": "1.2.1", "@rspack/core": "2.2.3", "@rspack/dev-server": "2.1.0", "@rspack/plugin-preact-refresh": "2.0.1", "@rspack/plugin-react-refresh": "2.0.2", "@vue/compiler-sfc": "3.5.43", "acorn": "^8.16.0", "babel-loader": "10.1.1", "babel-preset-solid": "1.9.15", "browser-extension-manifest-fields": "^3.0.2", "case-sensitive-paths-webpack-plugin": "^2.4.0", "content-security-policy-parser": "^0.6.0", "cross-spawn": "^7.0.6", "dotenv": "^18.0.0", "es-module-lexer": "^3.0.2", "extension-from-store": "^0.2.5", "fflate": "^0.8.3", "go-git-it": "^5.1.5", "ignore": "^7.0.5", "less": "4.9.1", "less-loader": "13.0.0", "parse5-utilities": "^1.0.0", "pintor": "0.3.0", "postcss": "8.5.23", "postcss-loader": "8.2.1", "postcss-preset-env": "11.1.1", "postcss-scss": "4.0.9", "preact": "11.0.0", "prefers-yarn": "2.0.1", "react-refresh": "0.18.0", "sass-loader": "17.0.0", "schema-utils": "^4.3.3", "svelte-loader": "3.2.4", "tiny-glob": "^0.2.9", "vue": "3.5.43", "vue-loader": "17.4.2", "webextension-polyfill": "^0.12.0", "webpack-merge": "^6.0.1", "webpack-target-webextension": "^2.1.3", "ws": "^8.20.1" } }, "sha512-Lc74XUdKhD7KhrYA2rPrmld9nqEHIiPmLBe/V/+wKv5Hi2DXEg+8vHtLdMHo8gkkdfV1rx8JdkNgeHu7s8M3Zg=="],
 
     "extension-from-store": ["extension-from-store@0.2.5", "", { "dependencies": { "fflate": "^0.8.3" }, "bin": { "extension-from-store": "bin.cjs" } }, "sha512-Bu2zR1rLpA5l6GBEiORttEdIR0AIjC64yVM+8J07FAWais2xfx6DftMbroZyzLppdygbT3DmTrclTZvY9AdESg=="],
 
-    "extension-install": ["extension-install@4.1.39", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-kHyG/0N9PbWf528I5xL8dqWej1giUPVPoh4T0XtGibYKyfe4r4jAxQ23gUFvzvuUhV1o59BzGA87HqIpyGySSA=="],
+    "extension-install": ["extension-install@4.1.40", "", { "dependencies": { "cross-spawn": "^7.0.6", "pintor": "0.3.0" } }, "sha512-rXwnXQSVzriwQSPZalBZBwKDbG5sRIqPAbm+du1432XJBeJUCeh8i3+ZfHdFnKt4ZnsYvkEgZDK7OQzr+63u4g=="],
 
     "fast-deep-equal": ["fast-deep-equal@3.1.3", "", {}, "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q=="],
 
