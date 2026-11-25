@@ -21,7 +21,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.8",
-		"extension": "4.2.0",
+		"extension": "4.3.0",
 		"oxlint": "1.94.0"
 	},
 	"packageManager": "bun@1.4.5"
